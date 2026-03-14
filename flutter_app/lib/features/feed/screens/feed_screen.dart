@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/models/feed_item.dart';
+import '../../graph/screens/graph_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -146,8 +147,31 @@ class _FeedScreenState extends State<FeedScreen> {
                               ),
                             ],
                             const SizedBox(height: 10),
-                            Text('Детальный анализ →',
-                              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w700)),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => Navigator.push(context,
+                                    MaterialPageRoute(builder: (_) => GraphScreen(
+                                      url: item.url,
+                                      title: item.title,
+                                    ))),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0e1420),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.hub, size: 12, color: Color(0xFF00e5ff)),
+                                        SizedBox(width: 4),
+                                        Text('Граф', style: TextStyle(fontSize: 11, color: Color(0xFF00e5ff), fontWeight: FontWeight.w700)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),

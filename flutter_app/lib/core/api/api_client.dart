@@ -27,4 +27,10 @@ class ApiClient {
       queryParameters: refresh ? {'refresh': true} : null);
     return response.data['articles'];
   }
+
+  Future<Map<String, dynamic>> getGraph({required String url, required String title}) async {
+    final response = await _dio.get('/api/graph',
+      queryParameters: {'url': url, 'title': title});
+    return response.data;
+  }
 }
