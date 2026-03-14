@@ -1,0 +1,74 @@
+[
+  {
+    "text": "Учёные доказали что земля плоская и NASA скрывает правду",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "Земля плоская — фейк"
+  },
+  {
+    "text": "Вакцины содержат чипы для слежки за людьми",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "Чипирование через вакцины — фейк"
+  },
+  {
+    "text": "5G вышки вызывают коронавирус и рак",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "5G и болезни — фейк"
+  },
+  {
+    "text": "Власти скрывают правду о метеорите который упадёт на землю",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "Метеорит — фейк"
+  },
+  {
+    "text": "Центральный банк России повысил ключевую ставку",
+    "verdict": "true",
+    "source_url": "https://tass.ru",
+    "title": "ЦБ повысил ставку — правда"
+  },
+  {
+    "text": "ВОЗ объявила пандемию гриппа в 2024 году",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "ВОЗ пандемия гриппа — фейк"
+  },
+  {
+    "text": "Правительство тайно добавляет фтор в воду для контроля населения",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "Фтор в воде — фейк"
+  },
+  {
+    "text": "Учёные обнаружили лекарство от рака которое скрывают фармкомпании",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "Лекарство от рака скрывают — фейк"
+  },
+  {
+    "text": "Россия запустила новый спутник связи",
+    "verdict": "true",
+    "source_url": "https://tass.ru",
+    "title": "Запуск спутника — правда"
+  },
+  {
+    "text": "Мигранты захватывают европейские города массово",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "Мигранты захватывают города — фейк"
+  },
+  {
+    "text": "Депутаты проголосовали за повышение пенсионного возраста",
+    "verdict": "true",
+    "source_url": "https://rbc.ru",
+    "title": "Пенсионный возраст — правда"
+  },
+  {
+    "text": "Химтрейлы самолётов содержат яды для сокращения населения",
+    "verdict": "fake",
+    "source_url": "https://medialeaks.ru",
+    "title": "Химтрейлы — фейк"
+  }
+]
