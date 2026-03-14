@@ -163,19 +163,21 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             // Кнопка графа
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: OutlinedButton.icon(
                 onPressed: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => GraphScreen(
                     url: item.url,
                     title: item.title,
                   ))),
-                icon: const Icon(Icons.hub, size: 16),
+                icon: const Icon(Icons.hub, size: 16, color: Color(0xFF1A1208)),
                 label: const Text('Граф распространения',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0e1420),
-                  foregroundColor: const Color(0xFF00e5ff),
+                  style: TextStyle(
+                    color: Color(0xFF1A1208),
+                    fontWeight: FontWeight.w700,
+                  )),
+                style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFF1A1208)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
