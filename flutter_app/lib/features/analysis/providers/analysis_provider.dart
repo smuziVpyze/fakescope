@@ -4,7 +4,6 @@ import '../../../core/models/analysis_result.dart';
 
 final apiClientProvider = Provider((ref) => ApiClient());
 
-// Состояния экрана
 sealed class AnalysisState {}
 class AnalysisInitial extends AnalysisState {}
 class AnalysisLoading extends AnalysisState {}
@@ -21,11 +20,13 @@ class AnalysisNotifier extends Notifier<AnalysisState> {
   @override
   AnalysisState build() => AnalysisInitial();
 
-  Future<void> analyze(String text) async {
+  Future<void> analyze(String input, {bool isUrl = false}) async {
     state = AnalysisLoading();
     try {
       final api = ref.read(apiClientProvider);
-      final json = await api.analyze(text: text);
+      final json = isUrl
+        ? await api.analyze(url: input)
+        : await api.analyze(text: input);
       state = AnalysisSuccess(AnalysisResult.fromJson(json));
     } catch (e) {
       state = AnalysisError('Ошибка: ${e.toString()}');

@@ -1,0 +1,270 @@
+{
+  "tass.ru": {
+    "trust": 0.95,
+    "reliable": true
+  },
+  "ria.ru": {
+    "trust": 0.9,
+    "reliable": true
+  },
+  "rbc.ru": {
+    "trust": 0.88,
+    "reliable": true
+  },
+  "kommersant.ru": {
+    "trust": 0.88,
+    "reliable": true
+  },
+  "vedomosti.ru": {
+    "trust": 0.87,
+    "reliable": true
+  },
+  "interfax.ru": {
+    "trust": 0.9,
+    "reliable": true
+  },
+  "iz.ru": {
+    "trust": 0.75,
+    "reliable": true
+  },
+  "lenta.ru": {
+    "trust": 0.72,
+    "reliable": true
+  },
+  "gazeta.ru": {
+    "trust": 0.7,
+    "reliable": true
+  },
+  "meduza.io": {
+    "trust": 0.78,
+    "reliable": true
+  },
+  "novayagazeta.ru": {
+    "trust": 0.75,
+    "reliable": true
+  },
+  "fontanka.ru": {
+    "trust": 0.72,
+    "reliable": true
+  },
+  "znak.com": {
+    "trust": 0.7,
+    "reliable": true
+  },
+  "ura.news": {
+    "trust": 0.65,
+    "reliable": true
+  },
+  "74.ru": {
+    "trust": 0.65,
+    "reliable": true
+  },
+  "nn.ru": {
+    "trust": 0.65,
+    "reliable": true
+  },
+  "e1.ru": {
+    "trust": 0.65,
+    "reliable": true
+  },
+  "ngs.ru": {
+    "trust": 0.65,
+    "reliable": true
+  },
+  "kp.ru": {
+    "trust": 0.6,
+    "reliable": true
+  },
+  "mk.ru": {
+    "trust": 0.6,
+    "reliable": true
+  },
+  "aif.ru": {
+    "trust": 0.62,
+    "reliable": true
+  },
+  "russiatoday.ru": {
+    "trust": 0.55,
+    "reliable": true
+  },
+  "rt.com": {
+    "trust": 0.55,
+    "reliable": true
+  },
+  "bbc.com": {
+    "trust": 0.92,
+    "reliable": true
+  },
+  "reuters.com": {
+    "trust": 0.95,
+    "reliable": true
+  },
+  "ap.org": {
+    "trust": 0.95,
+    "reliable": true
+  },
+  "afp.com": {
+    "trust": 0.92,
+    "reliable": true
+  },
+  "riafan.ru": {
+    "trust": 0.15,
+    "reliable": false
+  },
+  "life.ru": {
+    "trust": 0.25,
+    "reliable": false
+  },
+  "rambler.ru": {
+    "trust": 0.4,
+    "reliable": false
+  },
+  "nation-news.ru": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "politros.com": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "news-front.info": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "alternatio.org": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "antifashist.com": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "anna-news.info": {
+    "trust": 0.15,
+    "reliable": false
+  },
+  "colonelcassad.livejournal.com": {
+    "trust": 0.2,
+    "reliable": false
+  },
+  "rusvesna.su": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "inforeactor.ru": {
+    "trust": 0.2,
+    "reliable": false
+  },
+  "topcor.ru": {
+    "trust": 0.15,
+    "reliable": false
+  },
+  "tsargrad.tv": {
+    "trust": 0.2,
+    "reliable": false
+  },
+  "pravda.ru": {
+    "trust": 0.25,
+    "reliable": false
+  },
+  "dni.ru": {
+    "trust": 0.2,
+    "reliable": false
+  },
+  "km.ru": {
+    "trust": 0.2,
+    "reliable": false
+  },
+  "zavtra.ru": {
+    "trust": 0.25,
+    "reliable": false
+  },
+  "nakanune.ru": {
+    "trust": 0.2,
+    "reliable": false
+  },
+  "regnum.ru": {
+    "trust": 0.3,
+    "reliable": false
+  },
+  "inosmi.ru": {
+    "trust": 0.35,
+    "reliable": false
+  },
+  "vz.ru": {
+    "trust": 0.3,
+    "reliable": false
+  },
+  "ukraina.ru": {
+    "trust": 0.15,
+    "reliable": false
+  },
+  "novorosinform.org": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "southfront.org": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "aurora.network": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "ren.tv": {
+    "trust": 0.3,
+    "reliable": false
+  },
+  "russia.tv": {
+    "trust": 0.3,
+    "reliable": false
+  },
+  "1tv.ru": {
+    "trust": 0.35,
+    "reliable": false
+  },
+  "ntv.ru": {
+    "trust": 0.35,
+    "reliable": false
+  },
+  "russia-insider.com": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "strategic-culture.org": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "globalresearch.ca": {
+    "trust": 0.15,
+    "reliable": false
+  },
+  "21wire.tv": {
+    "trust": 0.1,
+    "reliable": false
+  },
+  "zerohedge.com": {
+    "trust": 0.2,
+    "reliable": false
+  },
+  "infowars.com": {
+    "trust": 0.05,
+    "reliable": false
+  },
+  "naturalnews.com": {
+    "trust": 0.05,
+    "reliable": false
+  },
+  "beforeitsnews.com": {
+    "trust": 0.05,
+    "reliable": false
+  },
+  "yournewswire.com": {
+    "trust": 0.05,
+    "reliable": false
+  },
+  "worldnewsdailyreport.com": {
+    "trust": 0.05,
+    "reliable": false
+  }
+}

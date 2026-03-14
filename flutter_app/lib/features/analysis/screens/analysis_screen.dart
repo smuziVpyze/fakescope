@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/analysis_provider.dart';
 import '../widgets/verdict_card.dart';
+import '../../graph/screens/graph_screen.dart';
 
 class AnalysisScreen extends ConsumerStatefulWidget {
   const AnalysisScreen({super.key});
@@ -12,6 +13,7 @@ class AnalysisScreen extends ConsumerStatefulWidget {
 
 class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
   final _controller = TextEditingController();
+  bool get _isUrl => _controller.text.trim().startsWith('http');
 
   @override
   void dispose() {
@@ -23,7 +25,11 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     FocusScope.of(context).unfocus();
-    ref.read(analysisProvider.notifier).analyze(text);
+    if (_isUrl) {
+      ref.read(analysisProvider.notifier).analyze(text, isUrl: true);
+    } else {
+      ref.read(analysisProvider.notifier).analyze(text, isUrl: false);
+    }
   }
 
   @override
@@ -35,7 +41,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1208),
         title: const Text('FakeScope',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5)),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
         centerTitle: false,
       ),
       body: SingleChildScrollView(
@@ -51,7 +57,6 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
               style: TextStyle(fontSize: 13, color: Colors.grey[600])),
             const SizedBox(height: 16),
 
-            // Поле ввода
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -61,17 +66,30 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
               child: TextField(
                 controller: _controller,
                 maxLines: 5,
+                onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Вставьте текст новости...',
+                  hintText: 'Вставьте текст или URL новости...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+
+            if (_controller.text.isNotEmpty)
+              Row(
+                children: [
+                  Icon(_isUrl ? Icons.link : Icons.text_fields,
+                    size: 14, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Text(_isUrl ? 'URL — анализ домена + граф' : 'Текст — NLP + поиск источника',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                ],
+              ),
+
             const SizedBox(height: 12),
 
-            // Кнопка
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -85,26 +103,49 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
                 child: state is AnalysisLoading
                   ? const SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Проверить', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  : const Text('Проверить',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               ),
             ),
 
             const SizedBox(height: 24),
 
-            // Результат
-            switch (state) {
-              AnalysisSuccess s => VerdictCard(result: s.result),
-              AnalysisError e => Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFEBEE),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFEF9A9A)),
+            if (state is AnalysisSuccess) ...[
+              VerdictCard(result: state.result),
+              const SizedBox(height: 12),
+
+              // Кнопка графа — всегда показываем
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => GraphScreen(
+                      url: _isUrl ? _controller.text.trim() : null,
+                      title: _controller.text.trim(),
+                    ))),
+                  icon: const Icon(Icons.hub, size: 16, color: Color(0xFF1A1208)),
+                  label: const Text('Граф распространения',
+                    style: TextStyle(color: Color(0xFF1A1208), fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFF1A1208)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text(e.message, style: const TextStyle(color: Color(0xFFC62828))),
                 ),
-              _ => const SizedBox.shrink(),
-            },
+              ),
+            ],
+
+            if (state is AnalysisError)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEF9A9A)),
+                ),
+                child: Text(state.message,
+                  style: const TextStyle(color: Color(0xFFC62828))),
+              ),
           ],
         ),
       ),

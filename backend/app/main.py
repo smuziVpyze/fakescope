@@ -6,6 +6,7 @@ from app.api.routes.feed import router as feed_router
 from app.api.routes.graph import router as graph_router
 from app.modules.nlp.analyzer import nlp_analyzer
 from app.modules.factcheck.checker import factchecker
+from app.modules.sources.domain_database import domain_db
 from app.core.database import engine, Base
 
 @asynccontextmanager
@@ -15,13 +16,14 @@ async def lifespan(app: FastAPI):
     print("✅ База данных готова")
     nlp_analyzer.load()
     factchecker.load()
+    domain_db.load()
     yield
     await engine.dispose()
 
 app = FastAPI(
     title="FakeScope API",
     description="Детекция фейковых новостей на русском языке",
-    version="0.4.0",
+    version="0.5.0",
     lifespan=lifespan
 )
 
@@ -38,4 +40,8 @@ app.include_router(graph_router, prefix="/api")
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "FakeScope API", "version": "0.4.0"}
+    return {"status": "ok", "service": "FakeScope API", "version": "0.5.0"}
+
+@app.get("/api/domains/stats")
+async def domain_stats():
+    return {"total_domains": domain_db.total}

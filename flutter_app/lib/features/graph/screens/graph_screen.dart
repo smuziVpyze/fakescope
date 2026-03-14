@@ -3,10 +3,10 @@ import 'package:graphview/GraphView.dart';
 import '../../../core/api/api_client.dart';
 
 class GraphScreen extends StatefulWidget {
-  final String url;
+  final String? url;
   final String title;
 
-  const GraphScreen({super.key, required this.url, required this.title});
+  const GraphScreen({super.key, this.url, required this.title});
 
   @override
   State<GraphScreen> createState() => _GraphScreenState();
@@ -50,7 +50,6 @@ class _GraphScreenState extends State<GraphScreen> {
   void _buildGraph(Map<String, dynamic> data) {
     final nodes = data['nodes'] as List;
     final edges = data['edges'] as List;
-
     final Map<String, Node> nodeMap = {};
 
     for (final n in nodes) {
@@ -105,7 +104,6 @@ class _GraphScreenState extends State<GraphScreen> {
           ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
           : Column(
               children: [
-                // Заголовок новости
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -114,7 +112,8 @@ class _GraphScreenState extends State<GraphScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(widget.title,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700, height: 1.4),
+                        style: const TextStyle(color: Colors.white, fontSize: 13,
+                          fontWeight: FontWeight.w700, height: 1.4),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -125,11 +124,11 @@ class _GraphScreenState extends State<GraphScreen> {
                   ),
                 ),
 
-                // Граф
                 Expanded(
                   child: _graph.nodeCount() <= 1
                     ? const Center(
-                        child: Text('Перепечаток не найдено',
+                        child: Text('Новость не найдена\nв отслеживаемых источниках',
+                          textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.white54, fontSize: 14)))
                     : InteractiveViewer(
                         constrained: false,
@@ -139,9 +138,7 @@ class _GraphScreenState extends State<GraphScreen> {
                         child: GraphView(
                           graph: _graph,
                           algorithm: BuchheimWalkerAlgorithm(
-                            _config,
-                            TreeEdgeRenderer(_config),
-                          ),
+                            _config, TreeEdgeRenderer(_config)),
                           paint: Paint()
                             ..color = const Color(0xFF00e5ff)
                             ..strokeWidth = 1.5
@@ -152,6 +149,7 @@ class _GraphScreenState extends State<GraphScreen> {
                             final trust = (data?['trust'] as num?)?.toDouble() ?? 0.5;
                             final isOriginal = data?['is_original'] == true;
                             final label = data?['label'] ?? id;
+                            final publishedAt = data?['published_at'] as String?;
 
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -161,9 +159,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                   : _trustColor(trust).withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: isOriginal
-                                    ? const Color(0xFF00e5ff)
-                                    : _trustColor(trust),
+                                  color: isOriginal ? const Color(0xFF00e5ff) : _trustColor(trust),
                                   width: isOriginal ? 2 : 1,
                                 ),
                               ),
@@ -171,16 +167,18 @@ class _GraphScreenState extends State<GraphScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (isOriginal)
-                                    const Text('ИСТОЧНИК',
-                                      style: TextStyle(fontSize: 8, color: Color(0xFF00e5ff), letterSpacing: 0.5)),
+                                    const Text('ПЕРВОИСТОЧНИК',
+                                      style: TextStyle(fontSize: 8, color: Color(0xFF00e5ff),
+                                        letterSpacing: 0.5)),
                                   Text(label.toString(),
                                     style: TextStyle(
                                       color: isOriginal ? const Color(0xFF00e5ff) : Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    )),
+                                      fontSize: 12, fontWeight: FontWeight.w700)),
                                   Text('${(trust * 100).toInt()}% доверие',
                                     style: TextStyle(fontSize: 9, color: _trustColor(trust))),
+                                  if (publishedAt != null)
+                                    Text(_formatTime(publishedAt),
+                                      style: const TextStyle(fontSize: 8, color: Colors.white38)),
                                 ],
                               ),
                             );
@@ -189,7 +187,6 @@ class _GraphScreenState extends State<GraphScreen> {
                       ),
                 ),
 
-                // Легенда
                 Container(
                   padding: const EdgeInsets.all(12),
                   color: const Color(0xFF141b2d),
@@ -209,10 +206,20 @@ class _GraphScreenState extends State<GraphScreen> {
     );
   }
 
+  String _formatTime(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   Widget _legend(Color color, String label) {
     return Row(
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(width: 10, height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
         Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
       ],
