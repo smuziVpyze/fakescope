@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/analysis/screens/analysis_screen.dart';
 import 'features/analysis/screens/history_screen.dart';
+import 'features/feed/screens/feed_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: FakeScopeApp()));
@@ -35,6 +36,7 @@ class _MainScreenState extends State<MainScreen> {
   int _index = 0;
 
   final _screens = const [
+    FeedScreen(),
     AnalysisScreen(),
     HistoryScreen(),
   ];
@@ -50,6 +52,7 @@ class _MainScreenState extends State<MainScreen> {
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.white38,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.newspaper), label: 'Лента'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Проверить'),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'История'),
         ],

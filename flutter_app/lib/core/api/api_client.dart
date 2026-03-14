@@ -21,4 +21,10 @@ class ApiClient {
     final response = await _dio.get('/api/history');
     return response.data;
   }
+
+  Future<List<dynamic>> getFeed({bool refresh = false}) async {
+    final response = await _dio.get('/api/feed',
+      queryParameters: refresh ? {'refresh': true} : null);
+    return response.data['articles'];
+  }
 }

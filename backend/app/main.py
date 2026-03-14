@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api.routes.analysis import router as analysis_router
+from app.api.routes.feed import router as feed_router
 from app.modules.nlp.analyzer import nlp_analyzer
 from app.modules.factcheck.checker import factchecker
 from app.core.database import engine, Base
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(analysis_router, prefix="/api")
+app.include_router(feed_router, prefix="/api")
 
 @app.get("/")
 async def root():
