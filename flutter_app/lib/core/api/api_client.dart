@@ -16,4 +16,9 @@ class ApiClient {
     });
     return response.data;
   }
+
+  Future<List<dynamic>> getHistory() async {
+    final response = await _dio.get('/api/history');
+    return response.data;
+  }
 }
