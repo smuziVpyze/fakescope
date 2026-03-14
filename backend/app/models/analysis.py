@@ -13,7 +13,12 @@ class AnalysisRequest(BaseModel):
 
 class ModuleScore(BaseModel):
     module: str
-    score: float        # 0.0 - 1.0, где 1.0 = точно фейк
+    score: float
+    explanation: str
+
+class DomainInfo(BaseModel):
+    domain: str
+    trust_score: float
     explanation: str
 
 class AnalysisResult(BaseModel):
@@ -21,3 +26,4 @@ class AnalysisResult(BaseModel):
     confidence: float
     scores: list[ModuleScore]
     arguments: list[str]
+    domain_info: Optional[DomainInfo] = None

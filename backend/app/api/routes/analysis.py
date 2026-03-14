@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from app.models.analysis import AnalysisRequest, AnalysisResult, Verdict, ModuleScore
+from app.models.analysis import AnalysisRequest, AnalysisResult, Verdict, ModuleScore, DomainInfo
 from app.models.db_models import AnalysisRecord
 from app.modules.nlp.analyzer import nlp_analyzer
+from app.modules.sources.domain_analyzer import domain_analyzer
 from app.core.database import get_db
 
 router = APIRouter()
@@ -23,29 +24,64 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
 
     text = request.text or request.url
     nlp = nlp_analyzer.analyze(text)
-    verdict = _verdict(nlp["fake_score"])
+
+    # Анализ домена если есть URL
+    domain_data = None
+    domain_score = 0.0
+    if request.url:
+        domain_data = domain_analyzer.analyze(request.url)
+        domain_score = domain_data["trust_score"]
+
+    # Fusion — объединяем NLP и домен
+    if request.url:
+        final_score = round(nlp["fake_score"] * 0.6 + domain_score * 0.4, 3)
+    else:
+        final_score = nlp["fake_score"]
+
+    verdict = _verdict(final_score)
 
     arguments = [nlp["explanation"]]
     if nlp["clickbait_score"] > 0.3:
         arguments.append(f"Кликбейт-индекс: {nlp['clickbait_score']}")
     if nlp["sentiment"] == "negative":
         arguments.append("Текст написан с целью вызвать негативные эмоции")
+    if domain_data:
+        arguments.append(f"Источник: {domain_data['explanation']}")
 
-    scores = [ModuleScore(module="nlp", score=nlp["fake_score"], explanation=nlp["explanation"])]
+    scores = [
+        ModuleScore(module="nlp", score=nlp["fake_score"], explanation=nlp["explanation"])
+    ]
+    if domain_data:
+        scores.append(ModuleScore(
+            module="domain",
+            score=domain_score,
+            explanation=domain_data["explanation"]
+        ))
 
-    # Сохраняем в PostgreSQL
+    domain_info = DomainInfo(
+        domain=domain_data["domain"],
+        trust_score=domain_data["trust_score"],
+        explanation=domain_data["explanation"]
+    ) if domain_data else None
+
     record = AnalysisRecord(
         input_text=request.text,
         input_url=request.url,
         verdict=verdict.value,
-        confidence=nlp["fake_score"],
+        confidence=final_score,
         arguments=arguments,
         scores=[s.model_dump() for s in scores],
     )
     db.add(record)
     await db.commit()
 
-    return AnalysisResult(verdict=verdict, confidence=nlp["fake_score"], scores=scores, arguments=arguments)
+    return AnalysisResult(
+        verdict=verdict,
+        confidence=final_score,
+        scores=scores,
+        arguments=arguments,
+        domain_info=domain_info,
+    )
 
 @router.get("/history")
 async def history(db: AsyncSession = Depends(get_db)):
