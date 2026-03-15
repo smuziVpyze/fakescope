@@ -6,6 +6,7 @@ from app.models.db_models import AnalysisRecord
 from app.modules.nlp.analyzer import nlp_analyzer
 from app.modules.sources.domain_analyzer import domain_analyzer
 from app.modules.factcheck.checker import factchecker
+from app.modules.factcheck.google_factcheck import google_factchecker
 from app.core.database import get_db
 
 router = APIRouter()
@@ -25,6 +26,25 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
 
     text = request.text or request.url
 
+    # Для фактчека — пробуем получить заголовок страницы если есть URL
+    factcheck_query = request.text or ""
+    if request.url and not request.text:
+        try:
+            import requests as req
+            from bs4 import BeautifulSoup
+            resp = req.get(request.url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+            soup = BeautifulSoup(resp.text, "html.parser")
+            title = soup.find("title")
+            og_title = soup.find("meta", property="og:title")
+            if og_title:
+                factcheck_query = og_title.get("content", "")
+            elif title:
+                factcheck_query = title.get_text(strip=True)
+            else:
+                factcheck_query = request.url
+        except:
+            factcheck_query = request.url
+
     # Модуль 1 — NLP
     nlp = nlp_analyzer.analyze(text)
 
@@ -35,24 +55,58 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
         domain_data = domain_analyzer.analyze(request.url)
         domain_score = domain_data["trust_score"]
 
-    # Модуль 3 — Фактчек
-    fact = factchecker.check(text)
-    fact_score = fact["score"]
+    # Модуль 3 — Локальный фактчек (FAISS)
+    local_fact = factchecker.check(factcheck_query)
 
-    # Fusion — взвешенное объединение
-    if request.url:
-        final_score = round(
-            nlp["fake_score"] * 0.4 +
-            domain_score    * 0.3 +
-            fact_score      * 0.3,
-            3
-        )
+    # Модуль 4 — Google Fact Check (онлайн)
+    google_fact = google_factchecker.check(factcheck_query)
+
+    # Берём лучший результат из двух фактчеков
+    if google_fact["found"] and local_fact["found"]:
+        fact_score = (google_fact["score"] * 0.6 + local_fact["score"] * 0.4)
+        fact_explanation = google_fact["explanation"]
+    elif google_fact["found"]:
+        fact_score = google_fact["score"]
+        fact_explanation = google_fact["explanation"]
+    elif local_fact["found"]:
+        fact_score = local_fact["score"]
+        fact_explanation = local_fact["explanation"]
     else:
-        final_score = round(
-            nlp["fake_score"] * 0.6 +
-            fact_score        * 0.4,
-            3
-        )
+        fact_score = 0.5
+        fact_explanation = None
+
+    # Fusion
+    # Если Google нашёл опровержения — доверяем больше
+    google_found = google_fact["found"] and google_fact["score"] > 0.6
+
+    if request.url:
+        if google_found:
+            final_score = round(
+                nlp["fake_score"] * 0.20 +
+                domain_score      * 0.20 +
+                fact_score        * 0.60,
+                3
+            )
+        else:
+            final_score = round(
+                nlp["fake_score"] * 0.35 +
+                domain_score      * 0.25 +
+                fact_score        * 0.40,
+                3
+            )
+    else:
+        if google_found:
+            final_score = round(
+                nlp["fake_score"] * 0.25 +
+                fact_score        * 0.75,
+                3
+            )
+        else:
+            final_score = round(
+                nlp["fake_score"] * 0.50 +
+                fact_score        * 0.50,
+                3
+            )
 
     verdict = _verdict(final_score)
 
@@ -64,17 +118,33 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
         arguments.append("Текст написан с целью вызвать негативные эмоции")
     if domain_data:
         arguments.append(f"Источник: {domain_data['explanation']}")
-    if fact["found"]:
-        arguments.append(f"Фактчек: {fact['explanation']}")
+    if fact_explanation:
+        arguments.append(f"Фактчек: {fact_explanation}")
+    else:
+        arguments.append("Фактчек: совпадений в базе не найдено")
 
-    # Скоры модулей
+    # Скоры
     scores = [
         ModuleScore(module="nlp", score=nlp["fake_score"], explanation=nlp["explanation"])
     ]
     if domain_data:
-        scores.append(ModuleScore(module="domain", score=domain_score, explanation=domain_data["explanation"]))
-    if fact["found"]:
-        scores.append(ModuleScore(module="factcheck", score=fact_score, explanation=fact["explanation"]))
+        scores.append(ModuleScore(
+            module="domain",
+            score=domain_score,
+            explanation=domain_data["explanation"]
+        ))
+    if google_fact["found"]:
+        scores.append(ModuleScore(
+            module="google_factcheck",
+            score=google_fact["score"],
+            explanation=google_fact["explanation"]
+        ))
+    elif local_fact["found"]:
+        scores.append(ModuleScore(
+            module="factcheck",
+            score=local_fact["score"],
+            explanation=local_fact["explanation"]
+        ))
 
     domain_info = DomainInfo(
         domain=domain_data["domain"],
@@ -82,7 +152,6 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
         explanation=domain_data["explanation"]
     ) if domain_data else None
 
-    # Сохраняем в БД
     record = AnalysisRecord(
         input_text=request.text,
         input_url=request.url,
@@ -123,14 +192,13 @@ async def history(db: AsyncSession = Depends(get_db)):
 
 @router.post("/factcheck/scrape")
 async def scrape_factcheck(background_tasks: BackgroundTasks):
-    """Запускает парсинг Medialeaks в фоне"""
     background_tasks.add_task(factchecker.scrape_medialeaks, 3)
     return {"status": "started", "message": "Парсинг запущен в фоне"}
 
 @router.get("/factcheck/stats")
 async def factcheck_stats():
-    """Статистика фактчек базы"""
     return {
         "total_facts": len(factchecker.facts),
         "loaded": factchecker.loaded,
+        "google_factcheck": google_factchecker.loaded,
     }
