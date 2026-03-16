@@ -3,13 +3,24 @@ from datetime import datetime, timezone
 from typing import List, Dict
 
 RSS_SOURCES = [
-    {"url": "https://tass.ru/rss/v2.xml",                        "name": "ТАСС",             "trust": "reliable"},
-    {"url": "https://rbc.ru/rss/news",                           "name": "РБК",              "trust": "reliable"},
-    {"url": "https://ria.ru/export/rss2/archive/index.xml",      "name": "РИА",              "trust": "reliable"},
-    {"url": "https://lenta.ru/rss/news",                         "name": "Лента.ру",         "trust": "neutral"},
-    {"url": "https://meduza.io/rss/all",                         "name": "Медуза",           "trust": "neutral"},
-    {"url": "https://nn.ru/rss/",                                "name": "НН.ру",            "trust": "neutral"},
-    {"url": "https://www.e1.ru/rss/news/",                       "name": "E1 Екатеринбург",  "trust": "neutral"},
+    # Надёжные федеральные
+    {"url": "https://tass.ru/rss/v2.xml",                  "name": "ТАСС",         "trust": "reliable"},
+    {"url": "https://ria.ru/export/rss2/archive/index.xml", "name": "РИА Новости",  "trust": "reliable"},
+    {"url": "https://www.kommersant.ru/RSS/news.xml",       "name": "Коммерсант",   "trust": "reliable"},
+    {"url": "https://interfax.ru/rss.asp",                  "name": "Интерфакс",    "trust": "reliable"},
+    {"url": "https://www.vedomosti.ru/rss/news",            "name": "Ведомости",    "trust": "reliable"},
+    {"url": "https://feeds.bbci.co.uk/russian/rss.xml",    "name": "BBC Русская",  "trust": "reliable"},
+    {"url": "https://rss.dw.com/rdf/rss-ru-all",           "name": "DW Русская",   "trust": "reliable"},
+    # Нейтральные
+    {"url": "https://lenta.ru/rss/news",                   "name": "Лента.ру",     "trust": "neutral"},
+    {"url": "https://meduza.io/rss/all",                   "name": "Медуза",       "trust": "neutral"},
+    {"url": "https://meduza.io/rss/news",                  "name": "Медуза Новости","trust": "neutral"},
+    {"url": "https://www.mk.ru/rss/index.xml",             "name": "МК",           "trust": "neutral"},
+    {"url": "https://aif.ru/rss/news",                     "name": "АиФ",          "trust": "neutral"},
+    {"url": "https://russian.rt.com/rss",                  "name": "RT",           "trust": "neutral"},
+    # Региональные
+    {"url": "https://74.ru/rss/",                          "name": "74.ру",        "trust": "neutral"},
+    {"url": "https://ura.news/rss",                        "name": "URA.RU",       "trust": "neutral"},
 ]
 
 class RSSFetcher:

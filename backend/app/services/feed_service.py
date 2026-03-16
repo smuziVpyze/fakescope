@@ -28,7 +28,7 @@ class FeedService:
         articles = rss_fetcher.fetch_all()
         analyzed = []
 
-        for article in articles[:30]:  # анализируем топ 30
+        for article in articles[:50]:  # анализируем топ 30
             text = article["title"]
             if article["summary"]:
                 text = text + ". " + article["summary"]

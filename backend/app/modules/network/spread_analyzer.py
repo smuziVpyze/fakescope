@@ -7,16 +7,20 @@ import urllib3
 urllib3.disable_warnings()
 
 NEWS_SOURCES = [
-    {"url": "https://tass.ru/rss/v2.xml",                    "name": "ТАСС",       "trust": 0.9},
-    {"url": "https://ria.ru/export/rss2/archive/index.xml",  "name": "РИА",        "trust": 0.85},
-    {"url": "https://rbc.ru/rss/news",                       "name": "РБК",        "trust": 0.85},
-    {"url": "https://lenta.ru/rss/news",                     "name": "Лента.ру",   "trust": 0.7},
-    {"url": "https://meduza.io/rss/all",                     "name": "Медуза",     "trust": 0.75},
-    {"url": "https://nn.ru/rss/",                            "name": "НН.ру",      "trust": 0.5},
-    {"url": "https://www.e1.ru/rss/news/",                   "name": "E1",         "trust": 0.5},
-    {"url": "https://www.kommersant.ru/RSS/news.xml",        "name": "Коммерсант", "trust": 0.85},
-    {"url": "https://iz.ru/xml/rss/all.xml",                 "name": "Известия",   "trust": 0.7},
-    {"url": "https://www.gazeta.ru/export/rss/lenta.xml",    "name": "Газета.ру",  "trust": 0.65},
+    {"url": "https://tass.ru/rss/v2.xml",                  "name": "ТАСС",         "trust": 0.95},
+    {"url": "https://ria.ru/export/rss2/archive/index.xml", "name": "РИА Новости",  "trust": 0.9},
+    {"url": "https://www.kommersant.ru/RSS/news.xml",       "name": "Коммерсант",   "trust": 0.88},
+    {"url": "https://interfax.ru/rss.asp",                  "name": "Интерфакс",    "trust": 0.9},
+    {"url": "https://www.vedomosti.ru/rss/news",            "name": "Ведомости",    "trust": 0.87},
+    {"url": "https://feeds.bbci.co.uk/russian/rss.xml",    "name": "BBC Русская",  "trust": 0.92},
+    {"url": "https://rss.dw.com/rdf/rss-ru-all",           "name": "DW Русская",   "trust": 0.9},
+    {"url": "https://lenta.ru/rss/news",                   "name": "Лента.ру",     "trust": 0.72},
+    {"url": "https://meduza.io/rss/all",                   "name": "Медуза",       "trust": 0.78},
+    {"url": "https://www.mk.ru/rss/index.xml",             "name": "МК",           "trust": 0.6},
+    {"url": "https://aif.ru/rss/news",                     "name": "АиФ",          "trust": 0.62},
+    {"url": "https://russian.rt.com/rss",                  "name": "RT",           "trust": 0.55},
+    {"url": "https://74.ru/rss/",                          "name": "74.ру",        "trust": 0.5},
+    {"url": "https://ura.news/rss",                        "name": "URA.RU",       "trust": 0.55},
 ]
 
 class SpreadAnalyzer:
