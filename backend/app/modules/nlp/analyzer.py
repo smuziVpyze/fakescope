@@ -1,21 +1,19 @@
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
-import torch
+from transformers import pipeline
 
 class NLPAnalyzer:
     def __init__(self):
-        self.model_name = "cointegrated/rubert-tiny2"
-        self.sentiment_pipeline = None
+        self.model_name = "SmuziVPyze/fakescope-rubert"
+        self.classifier = None
         self.loaded = False
 
     def load(self):
-        """Загружаем модель один раз при старте сервера"""
         print("⏳ Загружаем RuBERT модель...")
-        self.sentiment_pipeline = pipeline(
-            "sentiment-analysis",
+        self.classifier = pipeline(
+            "text-classification",
             model=self.model_name,
             tokenizer=self.model_name,
-            max_length=512,
-            truncation=True
+            max_length=128,
+            truncation=True,
         )
         self.loaded = True
         print("✅ RuBERT загружен")
@@ -24,65 +22,55 @@ class NLPAnalyzer:
         if not self.loaded:
             self.load()
 
-        # Анализ тональности
-        sentiment = self.sentiment_pipeline(text[:512])[0]
+        result = self.classifier(text[:512])[0]
 
-        # Считаем признаки кликбейта
+        # LABEL_1 = фейк, LABEL_0 = правда
+        if result["label"] == "LABEL_1":
+            fake_score = round(result["score"], 3)
+        else:
+            fake_score = round(1 - result["score"], 3)
+
+        # Кликбейт эвристика
         clickbait_score = self._clickbait_score(text)
 
-        # Считаем итоговый скор фейка
-        # Негативная тональность + кликбейт = выше вероятность фейка
-        sentiment_score = sentiment["score"] if sentiment["label"] == "negative" else 1 - sentiment["score"]
-        fake_score = round((sentiment_score * 0.4) + (clickbait_score * 0.6), 3)
+        # Итоговый скор — модель весит больше
+        final_score = round(fake_score * 0.8 + clickbait_score * 0.2, 3)
 
         return {
-            "fake_score": fake_score,
-            "sentiment": sentiment["label"],
-            "sentiment_confidence": round(sentiment["score"], 3),
+            "fake_score": final_score,
+            "sentiment": "negative" if fake_score > 0.5 else "positive",
+            "sentiment_confidence": fake_score,
             "clickbait_score": clickbait_score,
-            "explanation": self._explain(fake_score, sentiment["label"], clickbait_score)
+            "explanation": self._explain(final_score, clickbait_score)
         }
 
     def _clickbait_score(self, text: str) -> float:
-        """Простая эвристика для определения кликбейта"""
         text_lower = text.lower()
         score = 0.0
-
-        clickbait_markers = [
+        markers = [
             "шок", "сенсация", "срочно", "невероятно", "скрывают",
             "тайна", "разоблачение", "правда о", "все врут",
             "доказано", "учёные доказали", "официально подтверждено",
-            "breaking", "сми молчат", "власти скрывают", "это взорвёт"
+            "сми молчат", "власти скрывают", "это взорвёт"
         ]
-
-        exclamation_count = text.count("!")
-        caps_ratio = sum(1 for c in text if c.isupper()) / max(len(text), 1)
-
-        for marker in clickbait_markers:
+        for marker in markers:
             if marker in text_lower:
                 score += 0.15
-
-        score += min(exclamation_count * 0.1, 0.3)
+        score += min(text.count("!") * 0.1, 0.3)
+        caps_ratio = sum(1 for c in text if c.isupper()) / max(len(text), 1)
         score += min(caps_ratio * 2, 0.2)
-
         return round(min(score, 1.0), 3)
 
-    def _explain(self, fake_score: float, sentiment: str, clickbait: float) -> str:
+    def _explain(self, fake_score: float, clickbait: float) -> str:
         parts = []
-
-        if clickbait > 0.3:
-            parts.append("текст содержит кликбейт-маркеры")
-        if sentiment == "negative":
-            parts.append("выраженная негативная тональность")
         if fake_score > 0.7:
-            parts.append("высокая вероятность манипуляции")
+            parts.append("высокая вероятность фейка")
         elif fake_score > 0.4:
             parts.append("умеренные признаки недостоверности")
         else:
             parts.append("признаки фейка не обнаружены")
+        if clickbait > 0.3:
+            parts.append("текст содержит кликбейт-маркеры")
+        return ", ".join(parts).capitalize()
 
-        return ", ".join(parts).capitalize() if parts else "Текст выглядит нейтрально"
-
-
-# Singleton — создаём один раз, используем везде
 nlp_analyzer = NLPAnalyzer()

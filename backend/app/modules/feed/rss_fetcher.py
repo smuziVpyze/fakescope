@@ -10,7 +10,7 @@ RSS_SOURCES = [
     {"url": "https://interfax.ru/rss.asp",                  "name": "Интерфакс",    "trust": "reliable"},
     {"url": "https://www.vedomosti.ru/rss/news",            "name": "Ведомости",    "trust": "reliable"},
     {"url": "https://feeds.bbci.co.uk/russian/rss.xml",    "name": "BBC Русская",  "trust": "reliable"},
-    {"url": "https://rss.dw.com/rdf/rss-ru-all",           "name": "DW Русская",   "trust": "reliable"},
+    # {"url": "https://rss.dw.com/rdf/rss-ru-all",           "name": "DW Русская",   "trust": "reliable"},
     # Нейтральные
     {"url": "https://lenta.ru/rss/news",                   "name": "Лента.ру",     "trust": "neutral"},
     {"url": "https://meduza.io/rss/all",                   "name": "Медуза",       "trust": "neutral"},
