@@ -27,3 +27,6 @@ class AnalysisResult(BaseModel):
     scores: list[ModuleScore]
     arguments: list[str]
     domain_info: Optional[DomainInfo] = None
+    category: Optional[str] = None
+    category_ru: Optional[str] = None
+    category_emoji: Optional[str] = None

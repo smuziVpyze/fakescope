@@ -7,6 +7,9 @@ class FeedItem {
   final String publishedAt;
   final double fakeScore;
   final String verdict;
+  final String category;
+  final String categoryRu;
+  final String categoryEmoji;
 
   FeedItem({
     required this.title,
@@ -17,6 +20,9 @@ class FeedItem {
     required this.publishedAt,
     required this.fakeScore,
     required this.verdict,
+    required this.category,
+    required this.categoryRu,
+    required this.categoryEmoji,
   });
 
   factory FeedItem.fromJson(Map<String, dynamic> json) => FeedItem(
@@ -28,5 +34,8 @@ class FeedItem {
     publishedAt: json['published_at'] ?? '',
     fakeScore: (json['fake_score'] as num).toDouble(),
     verdict: json['verdict'] ?? 'unverified',
+    category: json['category'] ?? 'society',
+    categoryRu: json['category_ru'] ?? 'общество',
+    categoryEmoji: json['category_emoji'] ?? '👥',
   );
 }

@@ -3,6 +3,7 @@ import redis
 import hashlib
 from app.modules.feed.rss_fetcher import rss_fetcher
 from app.modules.nlp.analyzer import nlp_analyzer
+from app.modules.nlp.topic_classifier import topic_classifier
 from app.core.config import settings
 
 # Подключение к Redis
@@ -43,6 +44,17 @@ class FeedService:
                 article["fake_score"] = 0.5
                 article["verdict"] = "unverified"
                 article["nlp_explanation"] = ""
+
+            # Категоризация
+            try:
+                topic = topic_classifier.classify(text)
+                article["category"] = topic["category"]
+                article["category_ru"] = topic["category_ru"]
+                article["category_emoji"] = topic["category_emoji"]
+            except:
+                article["category"] = "society"
+                article["category_ru"] = "общество"
+                article["category_emoji"] = "👥"
 
             analyzed.append(article)
 

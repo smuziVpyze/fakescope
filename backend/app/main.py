@@ -8,6 +8,7 @@ from app.modules.nlp.analyzer import nlp_analyzer
 from app.modules.factcheck.checker import factchecker
 from app.modules.factcheck.google_factcheck import google_factchecker
 from app.modules.sources.domain_database import domain_db
+from app.modules.nlp.topic_classifier import topic_classifier
 from app.core.database import engine, Base
 
 @asynccontextmanager
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
     factchecker.load()
     google_factchecker.load()
     domain_db.load()
+    topic_classifier.load()
     yield
     await engine.dispose()
 

@@ -4,6 +4,7 @@ from sqlalchemy import select, desc
 from app.models.analysis import AnalysisRequest, AnalysisResult, Verdict, ModuleScore, DomainInfo
 from app.models.db_models import AnalysisRecord
 from app.modules.nlp.analyzer import nlp_analyzer
+from app.modules.nlp.topic_classifier import topic_classifier
 from app.modules.sources.domain_analyzer import domain_analyzer
 from app.modules.factcheck.checker import factchecker
 from app.modules.factcheck.google_factcheck import google_factchecker
@@ -163,12 +164,18 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     db.add(record)
     await db.commit()
 
+    # Модуль 5 — Тематика
+    topic = topic_classifier.classify(factcheck_query or text)
+
     return AnalysisResult(
         verdict=verdict,
         confidence=final_score,
         scores=scores,
         arguments=arguments,
         domain_info=domain_info,
+        category=topic["category"],
+        category_ru=topic["category_ru"],
+        category_emoji=topic["category_emoji"],
     )
 
 @router.get("/history")
