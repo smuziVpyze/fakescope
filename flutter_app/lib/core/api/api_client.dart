@@ -28,6 +28,11 @@ class ApiClient {
     return response.data['articles'];
   }
 
+  Future<List<dynamic>> getSources() async {
+    final response = await _dio.get('/api/sources');
+    return response.data['sources'];
+  }
+
   Future<Map<String, dynamic>> getGraph({String? url, required String title}) async {
     final params = <String, dynamic>{'title': title};
     if (url != null) params['url'] = url;
