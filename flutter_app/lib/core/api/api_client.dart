@@ -24,7 +24,7 @@ class ApiClient {
 
   Future<List<dynamic>> getFeed({bool refresh = false}) async {
     final response = await _dio.get('/api/feed',
-      queryParameters: refresh ? {'refresh': true} : null);
+        queryParameters: refresh ? {'refresh': true} : null);
     return response.data['articles'];
   }
 
@@ -38,5 +38,31 @@ class ApiClient {
     if (url != null) params['url'] = url;
     final response = await _dio.get('/api/graph', queryParameters: params);
     return response.data;
+  }
+
+  Future<List<dynamic>> getUserSources() async {
+    final response = await _dio.get('/api/sources/user');
+    return response.data['sources'];
+  }
+
+  Future<Map<String, dynamic>> addUserSource({
+    required String name,
+    required String domain,
+    String? rssUrl,
+  }) async {
+    final response = await _dio.post('/api/sources/user', data: {
+      'name': name,
+      'domain': domain,
+      if (rssUrl != null) 'rss_url': rssUrl,
+    });
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<void> toggleUserSource(String id) async {
+    await _dio.patch('/api/sources/user/$id/toggle');
+  }
+
+  Future<void> deleteUserSource(String id) async {
+    await _dio.delete('/api/sources/user/$id');
   }
 }

@@ -49,3 +49,60 @@ async def get_sources():
 
     result.sort(key=lambda x: x["trust_score"], reverse=True)
     return {"sources": result, "total": len(result)}
+
+from fastapi import Depends, Body, HTTPException
+from app.core.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.db_models import UserSource
+import uuid as uuid_module
+
+@router.get("/sources/user")
+async def get_user_sources(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(UserSource).order_by(UserSource.created_at.desc()))
+    sources = result.scalars().all()
+    return {"sources": [
+        {
+            "id": str(s.id),
+            "domain": s.domain,
+            "name": s.name,
+            "rss_url": s.rss_url,
+            "trust_score": s.trust_score,
+            "enabled": s.enabled,
+        }
+        for s in sources
+    ]}
+
+@router.post("/sources/user")
+async def add_user_source(
+    name: str = Body(...),
+    domain: str = Body(...),
+    rss_url: str = Body(None),
+    db: AsyncSession = Depends(get_db)
+):
+    domain = domain.lower().replace("https://", "").replace("http://", "").replace("www.", "").strip("/")
+    source = UserSource(domain=domain, name=name, rss_url=rss_url)
+    db.add(source)
+    await db.commit()
+    await db.refresh(source)
+    return {"id": str(source.id), "domain": source.domain, "name": source.name, "enabled": source.enabled, "rss_url": source.rss_url, "trust_score": source.trust_score}
+
+@router.patch("/sources/user/{source_id}/toggle")
+async def toggle_user_source(source_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(UserSource).where(UserSource.id == uuid_module.UUID(source_id)))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="Источник не найден")
+    source.enabled = not source.enabled
+    await db.commit()
+    return {"id": str(source.id), "enabled": source.enabled}
+
+@router.delete("/sources/user/{source_id}")
+async def delete_user_source(source_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(UserSource).where(UserSource.id == uuid_module.UUID(source_id)))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="Источник не найден")
+    await db.delete(source)
+    await db.commit()
+    return {"deleted": True}
