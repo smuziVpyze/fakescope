@@ -23,11 +23,11 @@ class VerdictCard extends StatelessWidget {
 
   String _moduleLabel(String module) {
     switch (module) {
-      case 'nlp':             return '🤖 NLP Анализ';
+      case 'nlp':              return '🤖 NLP Анализ';
       case 'google_factcheck': return '🔍 Google Factcheck';
-      case 'factcheck':       return '📋 Фактчек база';
-      case 'domain':          return '🌐 Источник';
-      default:                return module;
+      case 'factcheck':        return '📋 Фактчек база';
+      case 'domain':           return '🌐 Источник';
+      default:                 return module;
     }
   }
 
@@ -74,7 +74,7 @@ class VerdictCard extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Итоговый прогресс-бар
+          // Прогресс-бар
           Text('Вероятность фейка',
             style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
@@ -108,13 +108,20 @@ class VerdictCard extends StatelessWidget {
           Text('Анализ по модулям',
             style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600, letterSpacing: 0.3)),
           const SizedBox(height: 10),
-
           ...result.scores.map((score) => _ModuleScoreRow(
             label: _moduleLabel(score.module),
             score: score.score,
             explanation: score.explanation,
             color: _scoreColor(score.score),
           )),
+
+          // XAI — подсветка слов
+          if (result.wordHighlights.length >= 3) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+            _WordHighlightSection(highlights: result.wordHighlights),
+          ],
 
           const SizedBox(height: 16),
           const Divider(height: 1),
@@ -140,6 +147,95 @@ class VerdictCard extends StatelessWidget {
   }
 }
 
+// ───────────────────────────────────────────
+// Секция XAI: облако слов с подсветкой
+// ───────────────────────────────────────────
+class _WordHighlightSection extends StatelessWidget {
+  final List<WordHighlight> highlights;
+  const _WordHighlightSection({required this.highlights});
+
+  @override
+  Widget build(BuildContext context) {
+    // Макс. абсолютный вес для нормализации интенсивности
+    final maxWeight = highlights
+        .map((h) => h.weight.abs())
+        .fold(0.0, (a, b) => a > b ? a : b);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('🔬 ', style: TextStyle(fontSize: 13)),
+            Text('Ключевые слова',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+            const SizedBox(width: 8),
+            _Legend(color: const Color(0xFFE53935), label: 'фейк'),
+            const SizedBox(width: 8),
+            _Legend(color: const Color(0xFF43A047), label: 'правда'),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: highlights.map((h) {
+            final intensity = maxWeight > 0 ? h.weight.abs() / maxWeight : 0.0;
+            final isFake = h.weight > 0;
+            final baseColor = isFake ? const Color(0xFFE53935) : const Color(0xFF43A047);
+            final bgColor = baseColor.withOpacity(0.08 + intensity * 0.22);
+            final borderColor = baseColor.withOpacity(0.2 + intensity * 0.4);
+            final textColor = baseColor.withOpacity(0.7 + intensity * 0.3);
+            final fontSize = 11.0 + intensity * 4.0;
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: borderColor, width: 1),
+              ),
+              child: Text(
+                h.word,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: intensity > 0.5 ? FontWeight.w700 : FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 6),
+        Text('Размер слова отражает силу влияния на вердикт',
+          style: TextStyle(fontSize: 10, color: Colors.grey[400], fontStyle: FontStyle.italic)),
+      ],
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _Legend({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 8, height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 3),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+      ],
+    );
+  }
+}
+
+// ───────────────────────────────────────────
+// Строка модуля
+// ───────────────────────────────────────────
 class _ModuleScoreRow extends StatelessWidget {
   final String label;
   final double score;
@@ -163,41 +259,24 @@ class _ModuleScoreRow extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '${(score * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
-                ),
-              ),
+              Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('${(score * 100).toStringAsFixed(0)}%',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
             ],
           ),
           const SizedBox(height: 4),
           ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: score),
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) => LinearProgressIndicator(
-                value: value,
-                minHeight: 5,
-                backgroundColor: Colors.grey[100],
-                valueColor: AlwaysStoppedAnimation(color),
-              ),
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: score,
+              minHeight: 5,
+              backgroundColor: Colors.grey[100],
+              valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
           const SizedBox(height: 3),
           Text(explanation,
-            style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.3),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+            style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.4)),
         ],
       ),
     );

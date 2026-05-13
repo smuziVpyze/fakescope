@@ -21,6 +21,10 @@ class DomainInfo(BaseModel):
     trust_score: float
     explanation: str
 
+class WordHighlight(BaseModel):
+    word: str
+    weight: float
+
 class AnalysisResult(BaseModel):
     verdict: Verdict
     confidence: float
@@ -30,3 +34,4 @@ class AnalysisResult(BaseModel):
     category: Optional[str] = None
     category_ru: Optional[str] = None
     category_emoji: Optional[str] = None
+    word_highlights: list[WordHighlight] = []

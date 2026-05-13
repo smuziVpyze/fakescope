@@ -12,17 +12,31 @@ class ModuleScore {
   );
 }
 
+class WordHighlight {
+  final String word;
+  final double weight;
+
+  WordHighlight({required this.word, required this.weight});
+
+  factory WordHighlight.fromJson(Map<String, dynamic> json) => WordHighlight(
+    word: json['word'],
+    weight: (json['weight'] as num).toDouble(),
+  );
+}
+
 class AnalysisResult {
   final String verdict;
   final double confidence;
   final List<ModuleScore> scores;
   final List<String> arguments;
+  final List<WordHighlight> wordHighlights;
 
   AnalysisResult({
     required this.verdict,
     required this.confidence,
     required this.scores,
     required this.arguments,
+    required this.wordHighlights,
   });
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
@@ -30,5 +44,8 @@ class AnalysisResult {
     confidence: (json['confidence'] as num).toDouble(),
     scores: (json['scores'] as List).map((s) => ModuleScore.fromJson(s)).toList(),
     arguments: List<String>.from(json['arguments']),
+    wordHighlights: ((json['word_highlights'] ?? []) as List)
+        .map((w) => WordHighlight.fromJson(w))
+        .toList(),
   );
 }

@@ -6,7 +6,7 @@ class ApiClient {
   final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 120),
   ));
 
   Future<Map<String, dynamic>> analyze({String? text, String? url}) async {

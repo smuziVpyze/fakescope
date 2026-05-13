@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from app.models.analysis import AnalysisRequest, AnalysisResult, Verdict, ModuleScore, DomainInfo
+from app.models.analysis import AnalysisRequest, AnalysisResult, Verdict, ModuleScore, DomainInfo, WordHighlight
 from app.models.db_models import AnalysisRecord
 from app.modules.nlp.analyzer import nlp_analyzer
 from app.modules.nlp.topic_classifier import topic_classifier
@@ -164,6 +164,12 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     db.add(record)
     await db.commit()
 
+    # XAI — объяснение слов
+    word_highlights = [
+        WordHighlight(word=w["word"], weight=w["weight"])
+        for w in nlp_analyzer.explain(text)
+    ]
+
     # Модуль 5 — Тематика
     topic = topic_classifier.classify(factcheck_query or text)
 
@@ -176,6 +182,7 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
         category=topic["category"],
         category_ru=topic["category_ru"],
         category_emoji=topic["category_emoji"],
+        word_highlights=word_highlights,
     )
 
 @router.get("/history")
