@@ -20,6 +20,31 @@ def _verdict(score: float) -> Verdict:
     else:
         return Verdict.TRUE
 
+def _fusion(nlp_score: float, domain_score: float, fact_score: float,
+            has_url: bool, fact_found: bool, google_found: bool) -> float:
+    """
+    Fusion aggregator с правильными весами.
+    Если фактчек не нашёл данных — он вообще не участвует в формуле.
+    """
+    if has_url:
+        if fact_found and google_found:
+            # Google нашёл — доверяем фактчеку больше всего
+            return round(nlp_score * 0.20 + domain_score * 0.20 + fact_score * 0.60, 3)
+        elif fact_found:
+            # Только локальный фактчек или Google без уверенности
+            return round(nlp_score * 0.35 + domain_score * 0.25 + fact_score * 0.40, 3)
+        else:
+            # Нет данных фактчека — только NLP + домен
+            return round(nlp_score * 0.60 + domain_score * 0.40, 3)
+    else:
+        if fact_found and google_found:
+            return round(nlp_score * 0.25 + fact_score * 0.75, 3)
+        elif fact_found:
+            return round(nlp_score * 0.50 + fact_score * 0.50, 3)
+        else:
+            # Нет данных фактчека — только NLP
+            return round(nlp_score * 1.0, 3)
+
 @router.post("/analyze", response_model=AnalysisResult)
 async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     if not request.url and not request.text:
@@ -35,8 +60,8 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
             from bs4 import BeautifulSoup
             resp = req.get(request.url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
             soup = BeautifulSoup(resp.text, "html.parser")
-            title = soup.find("title")
             og_title = soup.find("meta", property="og:title")
+            title = soup.find("title")
             if og_title:
                 factcheck_query = og_title.get("content", "")
             elif title:
@@ -59,55 +84,37 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     # Модуль 3 — Локальный фактчек (FAISS)
     local_fact = factchecker.check(factcheck_query)
 
-    # Модуль 4 — Google Fact Check (онлайн)
+    # Модуль 4 — Google Fact Check
     google_fact = google_factchecker.check(factcheck_query)
 
-    # Берём лучший результат из двух фактчеков
-    if google_fact["found"] and local_fact["found"]:
-        fact_score = (google_fact["score"] * 0.6 + local_fact["score"] * 0.4)
+    # Определяем наличие данных фактчека
+    google_found = google_fact["found"]
+    local_found = local_fact["found"]
+    fact_found = google_found or local_found
+
+    # Итоговый fact_score
+    if google_found and local_found:
+        fact_score = google_fact["score"] * 0.6 + local_fact["score"] * 0.4
         fact_explanation = google_fact["explanation"]
-    elif google_fact["found"]:
+    elif google_found:
         fact_score = google_fact["score"]
         fact_explanation = google_fact["explanation"]
-    elif local_fact["found"]:
+    elif local_found:
         fact_score = local_fact["score"]
         fact_explanation = local_fact["explanation"]
     else:
-        fact_score = 0.5
+        fact_score = None
         fact_explanation = None
 
     # Fusion
-    # Если Google нашёл опровержения — доверяем больше
-    google_found = google_fact["found"] and google_fact["score"] > 0.6
-
-    if request.url:
-        if google_found:
-            final_score = round(
-                nlp["fake_score"] * 0.20 +
-                domain_score      * 0.20 +
-                fact_score        * 0.60,
-                3
-            )
-        else:
-            final_score = round(
-                nlp["fake_score"] * 0.35 +
-                domain_score      * 0.25 +
-                fact_score        * 0.40,
-                3
-            )
-    else:
-        if google_found:
-            final_score = round(
-                nlp["fake_score"] * 0.25 +
-                fact_score        * 0.75,
-                3
-            )
-        else:
-            final_score = round(
-                nlp["fake_score"] * 0.50 +
-                fact_score        * 0.50,
-                3
-            )
+    final_score = _fusion(
+        nlp_score=nlp["fake_score"],
+        domain_score=domain_score,
+        fact_score=fact_score if fact_score is not None else 0.0,
+        has_url=bool(request.url),
+        fact_found=fact_found,
+        google_found=google_found,
+    )
 
     verdict = _verdict(final_score)
 
@@ -124,7 +131,7 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     else:
         arguments.append("Фактчек: совпадений в базе не найдено")
 
-    # Скоры
+    # Скоры для UI
     scores = [
         ModuleScore(module="nlp", score=nlp["fake_score"], explanation=nlp["explanation"])
     ]
@@ -134,13 +141,13 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
             score=domain_score,
             explanation=domain_data["explanation"]
         ))
-    if google_fact["found"]:
+    if google_found:
         scores.append(ModuleScore(
             module="google_factcheck",
             score=google_fact["score"],
             explanation=google_fact["explanation"]
         ))
-    elif local_fact["found"]:
+    elif local_found:
         scores.append(ModuleScore(
             module="factcheck",
             score=local_fact["score"],
@@ -164,13 +171,13 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     db.add(record)
     await db.commit()
 
-    # XAI — объяснение слов
+    # XAI
     word_highlights = [
         WordHighlight(word=w["word"], weight=w["weight"])
         for w in nlp_analyzer.explain(text)
     ]
 
-    # Модуль 5 — Тематика
+    # Тематика
     topic = topic_classifier.classify(factcheck_query or text)
 
     return AnalysisResult(
