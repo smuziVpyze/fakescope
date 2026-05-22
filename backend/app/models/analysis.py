@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 class Verdict(str, Enum):
     FAKE = "fake"
@@ -10,6 +10,7 @@ class Verdict(str, Enum):
 class AnalysisRequest(BaseModel):
     url: Optional[str] = None
     text: Optional[str] = None
+    title: Optional[str] = None  # заголовок из ленты — fallback для NLP если URL не парсится
 
 class ModuleScore(BaseModel):
     module: str
@@ -28,10 +29,10 @@ class WordHighlight(BaseModel):
 class AnalysisResult(BaseModel):
     verdict: Verdict
     confidence: float
-    scores: list[ModuleScore]
-    arguments: list[str]
+    scores: List[ModuleScore]
+    arguments: List[str]
     domain_info: Optional[DomainInfo] = None
     category: Optional[str] = None
     category_ru: Optional[str] = None
     category_emoji: Optional[str] = None
-    word_highlights: list[WordHighlight] = []
+    word_highlights: Optional[List[WordHighlight]] = None

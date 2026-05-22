@@ -27,7 +27,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
 
   Future<void> _analyze() async {
     try {
-      final json = await _api.analyze(url: widget.item.url);
+      final json = await _api.analyze(url: widget.item.url, title: widget.item.title);
       setState(() {
         _analysis = AnalysisResult.fromJson(json);
         _loading = false;

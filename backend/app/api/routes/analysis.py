@@ -50,7 +50,7 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     if not request.url and not request.text:
         raise HTTPException(status_code=400, detail="Нужен url или text")
 
-    text = request.text or request.url
+    text = request.text or request.title or request.url
 
     # Для фактчека — пробуем получить заголовок страницы если есть URL
     factcheck_query = request.text or ""

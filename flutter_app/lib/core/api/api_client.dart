@@ -9,9 +9,9 @@ class ApiClient {
     receiveTimeout: const Duration(seconds: 120),
   ));
 
-  Future<Map<String, dynamic>> analyze({String? text, String? url}) async {
+  Future<Map<String, dynamic>> analyze({String? text, String? url, String? title}) async {
     final response = await _dio.post('/api/analyze', data: {
-      if (text != null) 'text': text,
+      if (text != null) 'text': text, if (title != null) 'title': title,
       if (url != null) 'url': url,
     });
     return response.data;
