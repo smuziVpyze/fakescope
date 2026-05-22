@@ -28,17 +28,38 @@ class ApiClient {
     return response.data['articles'];
   }
 
-  Future<List<dynamic>> getSources() async {
-    final response = await _dio.get('/api/sources');
-    return response.data['sources'];
-  }
-
   Future<Map<String, dynamic>> getGraph({String? url, required String title}) async {
     final params = <String, dynamic>{'title': title};
     if (url != null) params['url'] = url;
     final response = await _dio.get('/api/graph', queryParameters: params);
     return response.data;
   }
+
+  // ── Встроенные источники ──────────────────────────────────────────────────
+
+  Future<List<dynamic>> getBuiltinSources() async {
+    final response = await _dio.get('/api/sources');
+    return response.data['sources'];
+  }
+
+  Future<Map<String, dynamic>> toggleBuiltinSource(String domain) async {
+    final response = await _dio.patch('/api/sources/builtin/$domain/toggle');
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<Map<String, dynamic>> setBuiltinTrust(String domain, double trustScore) async {
+    final response = await _dio.patch(
+      '/api/sources/builtin/$domain/trust',
+      data: {'trust_score': trustScore},
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<void> resetBuiltinTrust(String domain) async {
+    await _dio.delete('/api/sources/builtin/$domain/trust');
+  }
+
+  // ── Пользовательские источники ────────────────────────────────────────────
 
   Future<List<dynamic>> getUserSources() async {
     final response = await _dio.get('/api/sources/user');
@@ -60,6 +81,18 @@ class ApiClient {
 
   Future<void> toggleUserSource(String id) async {
     await _dio.patch('/api/sources/user/$id/toggle');
+  }
+
+  Future<Map<String, dynamic>> setUserTrust(String id, double trustScore) async {
+    final response = await _dio.patch(
+      '/api/sources/user/$id/trust',
+      data: {'trust_score': trustScore},
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<void> resetUserTrust(String id) async {
+    await _dio.delete('/api/sources/user/$id/trust');
   }
 
   Future<void> deleteUserSource(String id) async {
