@@ -36,3 +36,4 @@ class AnalysisResult(BaseModel):
     category_ru: Optional[str] = None
     category_emoji: Optional[str] = None
     word_highlights: Optional[List[WordHighlight]] = None
+    title: Optional[str] = None

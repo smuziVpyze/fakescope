@@ -67,9 +67,9 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
             elif title:
                 factcheck_query = title.get_text(strip=True)
             else:
-                factcheck_query = request.url
+                factcheck_query = request.title or ""
         except:
-            factcheck_query = request.url
+            factcheck_query = request.title or ""
 
     # Модуль 1 — NLP
     nlp = nlp_analyzer.analyze(text)
@@ -161,7 +161,7 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     ) if domain_data else None
 
     record = AnalysisRecord(
-        input_text=request.text,
+        input_text=request.text or request.title,
         input_url=request.url,
         verdict=verdict.value,
         confidence=final_score,
@@ -190,6 +190,7 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
         category_ru=topic["category_ru"],
         category_emoji=topic["category_emoji"],
         word_highlights=word_highlights,
+        title=factcheck_query if factcheck_query != (request.url or "") else (request.title or ""),
     )
 
 @router.get("/history")

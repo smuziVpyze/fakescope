@@ -114,15 +114,24 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
               VerdictCard(result: state.result),
               const SizedBox(height: 12),
 
-              // Кнопка графа — всегда показываем
+              // Кнопка графа
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => GraphScreen(
-                      url: _isUrl ? _controller.text.trim() : null,
-                      title: _controller.text.trim(),
-                    ))),
+                  onPressed: () {
+                    final input = _controller.text.trim();
+                    // Если URL — передаём url + заголовок из результата анализа
+                    // Если текст — передаём первые 100 символов как заголовок
+                    final rawTitle = state.result.title ?? "";
+                    final graphTitle = _isUrl
+                      ? (rawTitle.isNotEmpty ? rawTitle : state.result.arguments.isNotEmpty ? state.result.arguments.first : input)
+                      : input;
+                    Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => GraphScreen(
+                        url: _isUrl ? input : null,
+                        title: graphTitle,
+                      )));
+                  },
                   icon: const Icon(Icons.hub, size: 16, color: Color(0xFF1A1208)),
                   label: const Text('Граф распространения',
                     style: TextStyle(color: Color(0xFF1A1208), fontWeight: FontWeight.w700)),
