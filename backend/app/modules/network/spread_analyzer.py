@@ -243,7 +243,7 @@ class SpreadAnalyzer:
 
     def _build_query(self, title: str) -> str:
         try:
-            translated = self._translator.translate(title[:200])
+            translated = self._translator.translate(title[:500])
             print(f"🌐 Перевод: '{title[:50]}' → '{translated[:50]}'")
         except Exception as e:
             print(f"⚠️ Перевод не удался: {e}")

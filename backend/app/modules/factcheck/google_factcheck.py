@@ -25,7 +25,7 @@ class GoogleFactChecker:
     def _translate(self, text: str) -> str:
         """Переводим на английский для лучшего поиска"""
         try:
-            translated = self.translator.translate(text[:200])
+            translated = self.translator.translate((text[:500]).rstrip() + ".")
             return translated
         except:
             return text
@@ -86,7 +86,7 @@ class GoogleFactChecker:
                     elif is_true: true_count += 1
 
                     results.append({
-                        "claim": text[:200],
+                        "claim": text[:500],
                         "rating": review.get("textualRating", ""),
                         "publisher": publisher,
                         "url": url,

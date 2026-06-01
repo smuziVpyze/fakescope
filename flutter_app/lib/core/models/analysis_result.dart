@@ -49,6 +49,7 @@ class AnalysisResult {
   final String? categoryRu;
   final String? categoryEmoji;
   final String? title; // заголовок статьи — используется для графа
+  final String? factcheckUrl; // ссылка на источник фактчека
 
   AnalysisResult({
     required this.verdict,
@@ -61,6 +62,7 @@ class AnalysisResult {
     this.categoryRu,
     this.categoryEmoji,
     this.title,
+    this.factcheckUrl,
   });
 
   // Используется при открытии графа из экрана анализа URL
@@ -81,5 +83,6 @@ class AnalysisResult {
     categoryRu: json['category_ru'],
     categoryEmoji: json['category_emoji'],
     title: json['title'],
+    factcheckUrl: json['factcheck_url'],
   );
 }

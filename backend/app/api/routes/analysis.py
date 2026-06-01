@@ -191,6 +191,7 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
         category_emoji=topic["category_emoji"],
         word_highlights=word_highlights,
         title=factcheck_query if factcheck_query != (request.url or "") else (request.title or ""),
+        factcheck_url=google_fact["claims"][0]["url"] if google_found and google_fact.get("claims") else None,
     )
 
 @router.get("/history")

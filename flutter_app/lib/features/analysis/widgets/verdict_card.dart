@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/analysis_result.dart';
 
 class VerdictCard extends StatelessWidget {
@@ -113,6 +114,9 @@ class VerdictCard extends StatelessWidget {
             score: score.score,
             explanation: score.explanation,
             color: _scoreColor(score.score),
+            factcheckUrl: score.module == 'google_factcheck'
+                ? result.factcheckUrl
+                : null,
           )),
 
           // XAI — подсветка слов
@@ -241,12 +245,14 @@ class _ModuleScoreRow extends StatelessWidget {
   final double score;
   final String explanation;
   final Color color;
+  final String? factcheckUrl;
 
   const _ModuleScoreRow({
     required this.label,
     required this.score,
     required this.explanation,
     required this.color,
+    this.factcheckUrl,
   });
 
   @override
@@ -277,6 +283,31 @@ class _ModuleScoreRow extends StatelessWidget {
           const SizedBox(height: 3),
           Text(explanation,
             style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.4)),
+          if (factcheckUrl != null && factcheckUrl!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () async {
+                final uri = Uri.parse(factcheckUrl!);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.open_in_new, size: 11, color: Color(0xFF1565C0)),
+                  const SizedBox(width: 4),
+                  const Text('Открыть источник фактчека',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF1565C0),
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    )),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

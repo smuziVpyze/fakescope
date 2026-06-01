@@ -10,7 +10,8 @@ class Verdict(str, Enum):
 class AnalysisRequest(BaseModel):
     url: Optional[str] = None
     text: Optional[str] = None
-    title: Optional[str] = None  # заголовок из ленты — fallback для NLP если URL не парсится
+    title: Optional[str] = None
+    factcheck_url: Optional[str] = None  # заголовок из ленты — fallback для NLP если URL не парсится
 
 class ModuleScore(BaseModel):
     module: str
@@ -37,3 +38,4 @@ class AnalysisResult(BaseModel):
     category_emoji: Optional[str] = None
     word_highlights: Optional[List[WordHighlight]] = None
     title: Optional[str] = None
+    factcheck_url: Optional[str] = None
