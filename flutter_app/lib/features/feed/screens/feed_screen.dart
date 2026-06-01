@@ -213,6 +213,20 @@ class _FeedScreenState extends State<FeedScreen> {
                                                 fontSize: 11,
                                                 color: Colors.grey[600],
                                                 fontWeight: FontWeight.w600)),
+                                            const SizedBox(width: 6),
+                                            Text('·',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[400])),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              item.publishedAt.length >= 10
+                                                ? item.publishedAt.substring(0, 10)
+                                                : item.publishedAt,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[400],
+                                                fontWeight: FontWeight.w500)),
                                           ]),
                                           Row(children: [
                                             // Категория
