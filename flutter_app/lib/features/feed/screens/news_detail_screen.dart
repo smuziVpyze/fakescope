@@ -168,6 +168,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   MaterialPageRoute(builder: (_) => GraphScreen(
                     url: item.url,
                     title: item.title,
+                    publishedAt: item.publishedAt,
                   ))),
                 icon: const Icon(Icons.hub, size: 16, color: Color(0xFF1A1208)),
                 label: const Text('Граф распространения',

@@ -24,7 +24,7 @@ def _get_sync_db_params() -> dict:
 
 class SpreadAnalyzer:
 
-    def analyze(self, title: str, url: str = None) -> dict:
+    def analyze(self, title: str, url: str = None, published_at: str = None) -> dict:
         input_domain = self._extract_domain(url) if url else None
 
         # Строим поисковый запрос — первые 4 значимых слова
@@ -44,10 +44,30 @@ class SpreadAnalyzer:
         # Первоисточник — самая ранняя статья
         original = articles[0]
 
-        # Первоисточник — всегда самая ранняя статья по дате
+        # Если передан URL и его домен не найден в результатах — добавляем вручную
+        print(f"🔎 input_domain={input_domain}, in_articles={any(a["domain"] == input_domain for a in articles)}, domains={[a["domain"] for a in articles]}")
+        if input_domain and not any(a["domain"] == input_domain for a in articles):
+            name = input_domain
+            pub = None
+            if published_at:
+                try:
+                    pub = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+            articles.append({
+                "domain": input_domain,
+                "name": input_domain,
+                "url": url or f"https://{input_domain}",
+                "title": title,
+                "published": pub,
+            })
+            # Пересортируем
+            articles.sort(key=lambda a: a["published"] or datetime.max.replace(tzinfo=timezone.utc))
+            original = articles[0]
 
+        # Пересчитываем rest после возможного добавления input_domain
         orig_published = original["published"]
-        rest = articles[1:]
+        rest = [a for a in articles if a["domain"] != original["domain"]]
 
         # Группируем перепечатки по временным интервалам
         def time_group(pub):
@@ -67,6 +87,7 @@ class SpreadAnalyzer:
             "id": original["domain"],
             "label": original["name"],
             "trust": self._domain_trust(original["domain"]),
+            "trust_known": self._is_known(original["domain"]),
             "is_original": True,
             "published_at": original["published"].isoformat() if original["published"] else None,
             "url": original["url"],
@@ -91,6 +112,7 @@ class SpreadAnalyzer:
                 "id": domain,
                 "label": node["name"],
                 "trust": self._domain_trust(domain),
+                "trust_known": self._is_known(domain),
                 "is_original": False,
                 "published_at": pub.isoformat() if pub else None,
                 "url": node["url"],
@@ -157,7 +179,7 @@ class SpreadAnalyzer:
                 articles.append({
                     "domain": domain,
                     "name": name,
-                    "url": url,
+                    "url": entry.get("link", url),  # Google News URL → браузер сам редиректит
                     "title": entry.get("title", ""),
                     "published": pub,
                 })
@@ -207,6 +229,12 @@ class SpreadAnalyzer:
         except Exception as e:
             print(f"⚠️ user_trust lookup error: {e}")
             return None
+
+    def _is_known(self, domain: str) -> bool:
+        user_trust = self._get_user_trust(domain)
+        if user_trust is not None:
+            return True
+        return domain_db.get_trust(domain)["known"]
 
     def _domain_trust(self, domain: str) -> float:
         user_trust = self._get_user_trust(domain)

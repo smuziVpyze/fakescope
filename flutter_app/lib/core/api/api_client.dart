@@ -28,9 +28,10 @@ class ApiClient {
     return response.data['articles'];
   }
 
-  Future<Map<String, dynamic>> getGraph({String? url, required String title}) async {
+  Future<Map<String, dynamic>> getGraph({String? url, required String title, String? publishedAt}) async {
     final params = <String, dynamic>{'title': title};
     if (url != null) params['url'] = url;
+    if (publishedAt != null) params['published_at'] = publishedAt;
     final response = await _dio.get('/api/graph', queryParameters: params);
     return response.data;
   }
