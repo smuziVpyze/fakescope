@@ -28,6 +28,11 @@ class ApiClient {
     return response.data['articles'];
   }
 
+  Future<Map<String, dynamic>> getDomainStats(String domain) async {
+    final response = await _dio.get('/api/domains/$domain/stats');
+    return response.data;
+  }
+
   Future<Map<String, dynamic>> getGraph({String? url, required String title, String? publishedAt}) async {
     final params = <String, dynamic>{'title': title};
     if (url != null) params['url'] = url;

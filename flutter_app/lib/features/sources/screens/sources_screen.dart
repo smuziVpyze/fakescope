@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'domain_stats_screen.dart';
 import '../../../core/api/api_client.dart';
 
 class SourcesScreen extends StatefulWidget {
@@ -491,7 +492,13 @@ class _SourcesScreenState extends State<SourcesScreen>
 
     return Opacity(
       opacity: enabled ? 1.0 : 0.5,
-      child: Container(
+      child: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => DomainStatsScreen(
+            domain: s['domain'] as String,
+            name: s['name'] as String,
+          ))),
+        child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -610,6 +617,7 @@ class _SourcesScreenState extends State<SourcesScreen>
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -621,7 +629,13 @@ class _SourcesScreenState extends State<SourcesScreen>
 
     return Opacity(
       opacity: enabled ? 1.0 : 0.5,
-      child: Container(
+      child: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => DomainStatsScreen(
+            domain: s['domain'] as String,
+            name: s['name'] as String,
+          ))),
+        child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -743,6 +757,7 @@ class _SourcesScreenState extends State<SourcesScreen>
           ),
         ),
       ),
+    ),
     );
   }
 

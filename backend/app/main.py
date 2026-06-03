@@ -5,6 +5,8 @@ from app.api.routes.analysis import router as analysis_router
 from app.api.routes.feed import router as feed_router
 from app.api.routes.graph import router as graph_router
 from app.api.routes.sources import router as sources_router
+from app.api.routes.domains import router as domains_router
+from app.api.routes.domains import router as domains_router
 from app.modules.nlp.analyzer import nlp_analyzer
 from app.modules.factcheck.checker import factchecker
 from app.modules.factcheck.google_factcheck import google_factchecker
@@ -43,6 +45,8 @@ app.include_router(analysis_router, prefix="/api")
 app.include_router(feed_router, prefix="/api")
 app.include_router(graph_router, prefix="/api")
 app.include_router(sources_router, prefix="/api")
+app.include_router(domains_router, prefix="/api")
+app.include_router(domains_router, prefix="/api")
 
 @app.get("/")
 async def root():

@@ -54,7 +54,18 @@ class DomainAnalyzer:
             if not domain:
                 return self._unknown()
 
-            # 1. Наша база 67 доменов
+            # 1. Пользовательский score имеет приоритет
+            user_trust = self._get_user_trust_sync(domain)
+            if user_trust is not None:
+                trust_score = 1 - user_trust
+                return {
+                    "domain": domain,
+                    "trust_score": round(trust_score, 3),
+                    "explanation": f"Надёжный источник: {domain}",
+                    "details": {"trust": user_trust, "from_user": True}
+                }
+
+            # 2. Наша база 67 доменов
             db_result = domain_db.get_trust(domain)
             if db_result["known"]:
                 trust_score = 1 - db_result["trust"]
@@ -63,17 +74,6 @@ class DomainAnalyzer:
                     "trust_score": round(trust_score, 3),
                     "explanation": f"{db_result['label']}: {domain}",
                     "details": {"trust": db_result["trust"], "from_database": True}
-                }
-
-            # 2. Пользовательские источники
-            user_trust = self._get_user_trust_sync(domain)
-            if user_trust is not None:
-                trust_score = 1 - user_trust
-                return {
-                    "domain": domain,
-                    "trust_score": round(trust_score, 3),
-                    "explanation": f"Пользовательский источник: {domain}",
-                    "details": {"trust": user_trust, "from_user": True}
                 }
 
             # 3. WHOIS
