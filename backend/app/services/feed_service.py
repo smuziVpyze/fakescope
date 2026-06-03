@@ -104,8 +104,6 @@ class FeedService:
         analyzed = []
         for article in articles[:50]:
             text = article["title"]
-            if article["summary"]:
-                text = text + ". " + article["summary"]
 
             try:
                 nlp = nlp_analyzer.analyze(text)

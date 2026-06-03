@@ -24,9 +24,11 @@ class GoogleFactChecker:
 
     def _translate(self, text: str) -> str:
         """Переводим на английский для лучшего поиска"""
+        if not text or not text.strip():
+            return text
         try:
             translated = self.translator.translate((text[:500]).rstrip() + ".")
-            return translated
+            return translated if translated else text
         except:
             return text
 

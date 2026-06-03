@@ -156,7 +156,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                 child: Text(_error!, style: const TextStyle(color: Color(0xFFC62828), fontSize: 12)),
               )
             else if (_analysis != null)
-              VerdictCard(result: _analysis!),
+              VerdictCard(result: _analysis!, showTitle: false),
 
             const SizedBox(height: 16),
 

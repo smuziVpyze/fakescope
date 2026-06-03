@@ -111,7 +111,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
             const SizedBox(height: 24),
 
             if (state is AnalysisSuccess) ...[
-              VerdictCard(result: state.result),
+              VerdictCard(result: state.result, showTitle: _isUrl),
               const SizedBox(height: 12),
 
               // Кнопка графа

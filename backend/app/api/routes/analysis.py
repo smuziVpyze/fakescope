@@ -53,8 +53,8 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
     text = request.text or request.title or request.url
 
     # Для фактчека — пробуем получить заголовок страницы если есть URL
-    factcheck_query = request.text or ""
-    if request.url and not request.text:
+    factcheck_query = request.text or request.title or ""
+    if request.url and not request.text and not request.title:
         try:
             import requests as req
             from bs4 import BeautifulSoup
@@ -70,6 +70,8 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
                 factcheck_query = request.title or ""
         except:
             factcheck_query = request.title or ""
+        if factcheck_query:
+            text = factcheck_query
 
     # Модуль 1 — NLP
     nlp = nlp_analyzer.analyze(text)

@@ -4,7 +4,8 @@ import '../../../core/models/analysis_result.dart';
 
 class VerdictCard extends StatelessWidget {
   final AnalysisResult result;
-  const VerdictCard({super.key, required this.result});
+  final bool showTitle;
+  const VerdictCard({super.key, required this.result, this.showTitle = true});
 
   Color get _verdictColor {
     switch (result.verdict) {
@@ -55,6 +56,18 @@ class VerdictCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+
+          // Заголовок проанализированного текста
+          if (showTitle && result.title != null && result.title!.isNotEmpty) ...[
+            Text(result.title!,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF333333),
+                height: 1.4,
+              )),
+            const SizedBox(height: 16),
+          ],
 
           // Вердикт
           Container(
