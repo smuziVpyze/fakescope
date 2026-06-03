@@ -44,14 +44,7 @@ class SpreadAnalyzer:
         # Первоисточник — самая ранняя статья
         original = articles[0]
 
-        # Если передан URL — проверяем совпадает ли домен с первоисточником
-        if input_domain and input_domain != original["domain"]:
-            # Ищем статью от нашего домена
-            our = next((a for a in articles if a["domain"] == input_domain), None)
-            if our:
-                original = our
-                articles = [a for a in articles if a["domain"] != input_domain]
-                articles.insert(0, original)
+        # Первоисточник — всегда самая ранняя статья по дате
 
         orig_published = original["published"]
         rest = articles[1:]

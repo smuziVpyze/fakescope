@@ -49,13 +49,14 @@ class _GraphScreenState extends State<GraphScreen> {
 
   void _buildGraph(Map<String, dynamic> data) {
     final nodes = data['nodes'] as List;
-    final edges = data['edges'] as List;
 
-    // Сортируем не-первоисточники по дате
     final original = nodes.firstWhere((n) => n['is_original'] == true,
         orElse: () => nodes.first);
     final rest = nodes.where((n) => n['is_original'] != true).toList()
       ..sort((a, b) {
+        final ga = (a['time_group'] as num?)?.toInt() ?? 99;
+        final gb = (b['time_group'] as num?)?.toInt() ?? 99;
+        if (ga != gb) return ga.compareTo(gb);
         final da = a['published_at'] as String?;
         final db = b['published_at'] as String?;
         if (da == null && db == null) return 0;
@@ -66,30 +67,49 @@ class _GraphScreenState extends State<GraphScreen> {
 
     final Map<String, Node> nodeMap = {};
 
-    // Сначала добавляем первоисточник
+    // Группируем по time_group
+    final Map<int, List<Map>> groups = {};
+    for (final n in rest) {
+      final g = (n['time_group'] as num?)?.toInt() ?? 99;
+      groups.putIfAbsent(g, () => []).add(n as Map);
+    }
+
+    // Сначала добавляем все перепечатки в обратном порядке групп
+    final sortedGroupKeys = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+    for (final groupKey in sortedGroupKeys) {
+      for (final n in groups[groupKey]!.reversed) {
+        final node = Node.Id(n['id']);
+        nodeMap[n['id'] as String] = node;
+        _graph.addNode(node);
+      }
+    }
+
+    // Первоисточник добавляем последним — graphview сделает его корнем
     final originNode = Node.Id(original['id']);
     nodeMap[original['id'] as String] = originNode;
     _graph.addNode(originNode);
 
-    // Затем остальные в порядке времени
-    for (final n in rest) {
-      final node = Node.Id(n['id']);
-      nodeMap[n['id'] as String] = node;
-      _graph.addNode(node);
-    }
+    // Рёбра: первоисточник -> первый узел каждой группы, внутри группы цепочка
+    String prevGroupRepresentative = original['id'] as String;
+    for (final groupKey in (groups.keys.toList()..sort())) {
+      final groupNodes = groups[groupKey]!;
+      final firstInGroup = groupNodes.first['id'] as String;
 
-    // Рёбра от первоисточника ко всем
-    final Set<String> addedEdges = {};
-    for (final e in edges) {
-      final key = '${e['from']}-${e['to']}';
-      if (!addedEdges.contains(key)) {
-        final from = nodeMap[e['from']];
-        final to = nodeMap[e['to']];
+      final fromNode = nodeMap[prevGroupRepresentative];
+      final toNode = nodeMap[firstInGroup];
+      if (fromNode != null && toNode != null) {
+        _graph.addEdge(fromNode, toNode);
+      }
+
+      for (int i = 1; i < groupNodes.length; i++) {
+        final from = nodeMap[groupNodes[i-1]['id'] as String];
+        final to = nodeMap[groupNodes[i]['id'] as String];
         if (from != null && to != null) {
           _graph.addEdge(from, to);
-          addedEdges.add(key);
         }
       }
+
+      prevGroupRepresentative = groupNodes.last['id'] as String;
     }
   }
 
