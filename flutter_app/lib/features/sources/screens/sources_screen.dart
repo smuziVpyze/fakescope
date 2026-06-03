@@ -456,14 +456,7 @@ class _SourcesScreenState extends State<SourcesScreen>
                     ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddSourceDialog,
-        backgroundColor: const Color(0xFF1A1208),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Добавить источник',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-      ),
+
     );
   }
 
@@ -735,10 +728,10 @@ class _SourcesScreenState extends State<SourcesScreen>
                   ]),
                 ),
               ),
-              const SizedBox(width: 4),
               Switch(
                 value: enabled,
                 activeColor: const Color(0xFF43A047),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 onChanged: (_) => _toggleUserSource(s['id'], enabled),
               ),
               IconButton(
