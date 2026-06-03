@@ -1,20 +1,16 @@
 import re
-import requests
+import feedparser
 import psycopg2
-from datetime import datetime
-from urllib.parse import urlparse, urljoin
-from bs4 import BeautifulSoup
-from deep_translator import GoogleTranslator
+from datetime import datetime, timezone
+from urllib.parse import urlparse, quote
 from app.core.config import settings
 from app.modules.sources.domain_database import domain_db
 
-# Домены которые не считаем "новостными ссылками"
 _SKIP_DOMAINS = {
     "google.com", "youtube.com", "facebook.com", "twitter.com",
     "t.me", "vk.com", "instagram.com", "whatsapp.com",
     "wikipedia.org", "apple.com", "microsoft.com",
 }
-
 
 def _get_sync_db_params() -> dict:
     url = settings.database_url.replace("postgresql+asyncpg://", "")
@@ -28,140 +24,99 @@ def _get_sync_db_params() -> dict:
 
 class SpreadAnalyzer:
 
-    def __init__(self):
-        self._translator = GoogleTranslator(source='auto', target='en')
-
     def analyze(self, title: str, url: str = None) -> dict:
-        api_key = settings.news_api_key
         input_domain = self._extract_domain(url) if url else None
 
-        if not api_key:
-            return self._only_source(url, input_domain, title,
-                                     "NewsAPI ключ не настроен — добавь NEWS_API_KEY в .env")
-
-        # Шаг 1 — NewsAPI (перепечатки)
+        # Строим поисковый запрос — первые 4 значимых слова
         query = self._build_query(title)
-        print(f"🔍 NewsAPI: '{query}'")
+        print(f"🔍 Google News RSS: '{query}'")
 
-        reprinted_nodes = {}
-        try:
-            resp = requests.get(
-                "https://newsapi.org/v2/everything",
-                params={"q": query, "sortBy": "publishedAt",
-                        "pageSize": 20, "apiKey": api_key},
-                timeout=10,
-            )
-            data = resp.json()
-            if data.get("status") == "ok":
-                articles = data.get("articles", [])
-                print(f"✅ NewsAPI: найдено {len(articles)} статей")
-                for article in articles:
-                    article_url = article.get("url", "")
-                    domain = self._extract_domain(article_url)
-                    if not domain or domain in reprinted_nodes:
-                        continue
-                    published = self._parse_date(article.get("publishedAt", ""))
-                    reprinted_nodes[domain] = {
-                        "domain": domain,
-                        "name": article.get("source", {}).get("name", domain),
-                        "trust": self._domain_trust(domain),
-                        "url": article_url,
-                        "title": article.get("title", ""),
-                        "published": published,
-                        "relation": "reprinted",
-                    }
-        except Exception as e:
-            print(f"⚠️ NewsAPI ошибка: {e}")
+        # Запрашиваем Google News RSS
+        articles = self._fetch_gnews(query)
 
-        # Шаг 2 — парсим ссылки из самой статьи (цитирования)
-        cited_nodes = {}
-        if url:
-            cited_nodes = self._extract_cited_domains(url, input_domain)
-
-        # Объединяем: cited имеет приоритет над reprinted
-        nodes_map = {**reprinted_nodes}
-        for domain, node in cited_nodes.items():
-            if domain not in nodes_map:
-                nodes_map[domain] = node
-            else:
-                # Домен найден в обоих — отмечаем как cited+reprinted
-                nodes_map[domain]["relation"] = "both"
-
-        # Добавляем исходный URL
-        if input_domain and input_domain not in nodes_map:
-            nodes_map[input_domain] = {
-                "domain": input_domain,
-                "name": input_domain,
-                "trust": self._domain_trust(input_domain),
-                "url": url,
-                "title": title,
-                "published": None,
-                "relation": "original",
-            }
-
-        if not nodes_map:
+        if not articles:
             return self._only_source(url, input_domain, title,
-                                     "Упоминаний в других источниках не найдено")
+                                     "Новость не найдена в других источниках")
 
-        # Определяем первоисточник
-        all_nodes = list(nodes_map.values())
-        with_date = sorted(
-            [n for n in all_nodes if n["published"]],
-            key=lambda x: x["published"]
-        )
-        without_date = [n for n in all_nodes if not n["published"]]
+        # Сортируем по дате
+        articles.sort(key=lambda a: a["published"] or datetime.min.replace(tzinfo=timezone.utc))
 
-        if with_date:
-            original = with_date[0]
-            rest = with_date[1:] + without_date
-        elif input_domain:
-            original = next(
-                (n for n in all_nodes if n["domain"] == input_domain),
-                all_nodes[0]
-            )
-            rest = [n for n in all_nodes if n["domain"] != original["domain"]]
-        else:
-            original = all_nodes[0]
-            rest = all_nodes[1:]
+        # Первоисточник — самая ранняя статья
+        original = articles[0]
 
-        # Строим граф — звезда от первоисточника
-        nodes_out = [{
+        # Если передан URL — проверяем совпадает ли домен с первоисточником
+        if input_domain and input_domain != original["domain"]:
+            # Ищем статью от нашего домена
+            our = next((a for a in articles if a["domain"] == input_domain), None)
+            if our:
+                original = our
+                articles = [a for a in articles if a["domain"] != input_domain]
+                articles.insert(0, original)
+
+        orig_published = original["published"]
+        rest = articles[1:]
+
+        # Группируем перепечатки по временным интервалам
+        def time_group(pub):
+            if not pub or not orig_published:
+                return 3
+            delta_hours = (pub - orig_published).total_seconds() / 3600
+            if delta_hours < 2:   return 1  # 0-2ч
+            if delta_hours < 6:   return 2  # 2-6ч
+            if delta_hours < 24:  return 3  # 6-24ч
+            return 4                         # 1д+
+
+        nodes_out = []
+        edges = []
+
+        # Первоисточник
+        nodes_out.append({
             "id": original["domain"],
             "label": original["name"],
-            "trust": original["trust"],
+            "trust": self._domain_trust(original["domain"]),
             "is_original": True,
             "published_at": original["published"].isoformat() if original["published"] else None,
             "url": original["url"],
             "title": original["title"],
             "relation": "original",
-        }]
-        edges = []
+            "time_group": 0,
+        })
+
+        seen_domains = {original["domain"]}
+
         for node in rest:
-            delay_str = self._calc_delay(original["published"], node["published"])
+            domain = node["domain"]
+            if domain in seen_domains:
+                continue
+            seen_domains.add(domain)
+
+            pub = node["published"]
+            delay_str = self._calc_delay(orig_published, pub)
+            group = time_group(pub)
+
             nodes_out.append({
-                "id": node["domain"],
+                "id": domain,
                 "label": node["name"],
-                "trust": node["trust"],
+                "trust": self._domain_trust(domain),
                 "is_original": False,
-                "published_at": node["published"].isoformat() if node["published"] else None,
+                "published_at": pub.isoformat() if pub else None,
                 "url": node["url"],
                 "title": node["title"],
-                "relation": node.get("relation", "reprinted"),
-            })
-            edges.append({
-                "from": original["domain"],
-                "to": node["domain"],
-                "delay": delay_str,
-                "type": node.get("relation", "reprinted"),  # reprinted / cited / both
+                "relation": "reprinted",
+                "time_group": group,
             })
 
-        reposts = len(rest)
-        cited_count = sum(1 for n in rest if n.get("relation") in ("cited", "both"))
+            edges.append({
+                "from": original["domain"],
+                "to": domain,
+                "delay": delay_str,
+                "type": "reprinted",
+            })
+
+        reposts = len(nodes_out) - 1
         summary_parts = [f"Первоисточник: {original['name']}"]
         if reposts > 0:
             summary_parts.append(f"Перепечатано {reposts} изданиями")
-        if cited_count > 0:
-            summary_parts.append(f"Процитировано {cited_count} раз")
 
         return {
             "original_url": original["url"],
@@ -171,94 +126,57 @@ class SpreadAnalyzer:
             "edges": edges,
             "spread_score": round(min(1.0, reposts / 10), 3),
             "summary": " · ".join(summary_parts),
-            "cited_count": cited_count,
+            "cited_count": 0,
         }
 
-    # ── парсинг ссылок из статьи ──────────────────────────────────────────
-
-    def _extract_cited_domains(self, url: str, skip_domain: str = None) -> dict:
-        """
-        Скачиваем страницу и извлекаем все внешние ссылки на новостные домены.
-        Возвращает dict domain → node с relation='cited'.
-        """
-        cited = {}
+    def _fetch_gnews(self, query: str) -> list:
         try:
-            resp = requests.get(
-                url, timeout=5,
-                headers={"User-Agent": "Mozilla/5.0"},
-            )
-            if resp.status_code != 200:
-                print(f"⚠️ Парсинг ссылок: HTTP {resp.status_code} для {url}")
-                return cited
+            from datetime import datetime, timedelta
+            after = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            encoded = quote(query + f' after:{after}')
+            rss_url = f"https://news.google.com/rss/search?q={encoded}&hl=ru&gl=RU&ceid=RU:ru"
+            feed = feedparser.parse(rss_url)
+            articles = []
+            for entry in feed.entries[:20]:
+                pub = None
+                if entry.get("published"):
+                    try:
+                        from email.utils import parsedate_to_datetime
+                        pub = parsedate_to_datetime(entry.published)
+                    except Exception:
+                        pass
 
-            soup = BeautifulSoup(resp.text, "html.parser")
+                source = entry.get("source", {})
+                source_url = source.get("href", "") if source else ""
+                name = source.get("title") if source else None
 
-            # Ищем ссылки в теле статьи
-            article_tag = (
-                soup.find("article") or
-                soup.find("div", class_=re.compile(r"article|content|body|text", re.I)) or
-                soup.body
-            )
-            if not article_tag:
-                return cited
-
-            seen = set()
-            for a in article_tag.find_all("a", href=True):
-                href = a["href"].strip()
-                # Приводим к абсолютному URL
-                if href.startswith("/"):
-                    href = urljoin(url, href)
-                if not href.startswith("http"):
+                # Берём домен из source.href, а не из google redirect URL
+                domain = self._extract_domain(source_url)
+                if not domain or domain in _SKIP_DOMAINS:
                     continue
+                if not name:
+                    name = domain
 
-                domain = self._extract_domain(href)
-                if not domain or domain == skip_domain:
-                    continue
-                if domain in _SKIP_DOMAINS:
-                    continue
-                if domain in seen:
-                    continue
-                seen.add(domain)
+                # Реальный URL статьи — source.href (главная страница источника)
+                # Для графа достаточно, точный URL требует редиректа
+                url = source_url
 
-                # Берём только домены с хотя бы одной точкой (не localhost и т.п.)
-                if "." not in domain:
-                    continue
-
-                cited[domain] = {
+                articles.append({
                     "domain": domain,
-                    "name": domain,
-                    "trust": self._domain_trust(domain),
-                    "url": href,
-                    "title": a.get_text(strip=True)[:100] or domain,
-                    "published": None,
-                    "relation": "cited",
-                }
-
-            print(f"🔗 Найдено {len(cited)} цитируемых источников в статье")
+                    "name": name,
+                    "url": url,
+                    "title": entry.get("title", ""),
+                    "published": pub,
+                })
+            print(f"📰 Google News: найдено {len(articles)} статей")
+            return articles
         except Exception as e:
-            print(f"⚠️ Парсинг ссылок не удался: {e}")
-        return cited
-
-    # ── вспомогательные ──────────────────────────────────────────────────
+            print(f"⚠️ Google News RSS ошибка: {e}")
+            return []
 
     def _build_query(self, title: str) -> str:
-        try:
-            translated = self._translator.translate(title[:500])
-            print(f"🌐 Перевод: '{title[:50]}' → '{translated[:50]}'")
-        except Exception as e:
-            print(f"⚠️ Перевод не удался: {e}")
-            translated = title
-        clean = re.sub(r'[^\w\s]', ' ', translated)
-        words = [w for w in clean.split() if len(w) > 3]
-        return " ".join(words[:5]) if words else translated[:80]
-
-    def _parse_date(self, pub_str: str):
-        if not pub_str:
-            return None
-        try:
-            return datetime.fromisoformat(pub_str.replace("Z", "+00:00"))
-        except Exception:
-            return None
+        # Используем полный заголовок для точного поиска
+        return title[:150]
 
     def _calc_delay(self, orig_published, node_published) -> str | None:
         if not orig_published or not node_published:
@@ -330,6 +248,7 @@ class SpreadAnalyzer:
                 "url": url or "",
                 "title": title,
                 "relation": "original",
+                "time_group": 0,
             }],
             "edges": [],
             "spread_score": 0.0,
