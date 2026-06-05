@@ -5,15 +5,11 @@ import 'news_detail_screen.dart';
 
 const _allCategories = [
   {'slug': 'all', 'ru': 'Все', 'emoji': '📰'},
-  {'slug': 'politics', 'ru': 'Политика', 'emoji': '🏛'},
-  {'slug': 'economy', 'ru': 'Экономика', 'emoji': '📈'},
-  {'slug': 'society', 'ru': 'Общество', 'emoji': '👥'},
-  {'slug': 'health', 'ru': 'Здоровье', 'emoji': '🏥'},
-  {'slug': 'tech', 'ru': 'Технологии', 'emoji': '💻'},
-  {'slug': 'sport', 'ru': 'Спорт', 'emoji': '⚽'},
-  {'slug': 'crime', 'ru': 'Происшествия', 'emoji': '🚨'},
-  {'slug': 'world', 'ru': 'Мир', 'emoji': '🌍'},
-  {'slug': 'culture', 'ru': 'Культура', 'emoji': '🎭'},
+  {'slug': 'politics', 'ru': 'Политика и власть', 'emoji': '🏛'},
+  {'slug': 'economy', 'ru': 'Экономика и бизнес', 'emoji': '📈'},
+  {'slug': 'society', 'ru': 'Общество и происшествия', 'emoji': '👥'},
+  {'slug': 'tech', 'ru': 'Наука и технологии', 'emoji': '💻'},
+  {'slug': 'sport', 'ru': 'Спорт и культура', 'emoji': '⚽'},
 ];
 
 class FeedScreen extends StatefulWidget {
