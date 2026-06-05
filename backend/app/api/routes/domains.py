@@ -96,7 +96,7 @@ def get_domain_stats(domain: str):
         history_score = round(1.0 - fake_ratio, 3)
         base_score = db_info["trust"]
         effective_base = user_score if user_score is not None else base_score
-        dynamic_trust = round(effective_base * 0.7 + history_score * 0.3, 3) if total >= 3 else effective_base
+        dynamic_trust = round(effective_base * 0.7 + history_score * 0.3, 3) if total >= 10 else None
 
         now = datetime.now(timezone.utc)
         trend = []

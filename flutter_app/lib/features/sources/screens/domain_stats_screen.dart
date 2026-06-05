@@ -148,7 +148,9 @@ class _DomainStatsScreenState extends State<DomainStatsScreen> {
             const SizedBox(height: 6),
             if (s.known)
               Text(
-                s.userTrustScore != null ? 'Вы установили: ${(s.userTrustScore! * 100).toStringAsFixed(0)}% · С учётом истории: ${(s.trustScoreDynamic! * 100).toStringAsFixed(0)}%' : 'Базовый: ${(s.trustScore * 100).toStringAsFixed(0)}%${s.trustScoreDynamic != null ? " · Динамический: ${(s.trustScoreDynamic! * 100).toStringAsFixed(0)}%" : ""}',
+                s.userTrustScore != null
+                    ? 'Вы установили: ${(s.userTrustScore! * 100).toStringAsFixed(0)}%${s.trustScoreDynamic != null ? " · Рекомендуемый: ${(s.trustScoreDynamic! * 100).toStringAsFixed(0)}% (на основе ${s.totalAnalyses} анализов)" : ""}'
+                    : 'Базовый: ${(s.trustScore * 100).toStringAsFixed(0)}%${s.trustScoreDynamic != null ? " · Рекомендуемый: ${(s.trustScoreDynamic! * 100).toStringAsFixed(0)}% (на основе ${s.totalAnalyses} анализов)" : ""}',
                 style: TextStyle(fontSize: 11, color: Colors.grey[500]),
               ),
           ])),
