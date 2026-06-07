@@ -93,9 +93,10 @@ def get_domain_stats(domain: str):
 
         avg_confidence = sum(c for _, c, _ in domain_rows) / total
         fake_ratio = verdicts["fake"] / total
-        history_score = round(1.0 - fake_ratio, 3)
         base_score = db_info["trust"]
         effective_base = user_score if user_score is not None else base_score
+        weighted_fake_ratio = fake_ratio * (1 + effective_base)
+        history_score = round(max(0.0, 1.0 - weighted_fake_ratio), 3)
         dynamic_trust = round(effective_base * 0.7 + history_score * 0.3, 3) if total >= 10 else None
 
         now = datetime.now(timezone.utc)
