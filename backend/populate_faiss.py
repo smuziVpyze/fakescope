@@ -3,57 +3,47 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 import pandas as pd
-import numpy as np
-from app.modules.factcheck.checker import factchecker
+import psycopg2
+from app.core.config import settings
 
 CSV_PATH = '/Users/artemijsmykov/Desktop/fakescope-dataset/dataset_final.csv'
 
-factchecker.load()
-print(f'Текущих записей в базе: {len(factchecker.facts)}')
+def get_db():
+    url = settings.database_url.replace("postgresql+asyncpg://", "")
+    user_pass, rest = url.split("@")
+    user, password = user_pass.split(":")
+    host_port, dbname = rest.split("/")
+    host, port = host_port.split(":") if ":" in host_port else (host_port, "5432")
+    return psycopg2.connect(host=host, port=int(port), user=user, password=password, dbname=dbname)
+
+conn = get_db()
+cur = conn.cursor()
+
+cur.execute("SELECT COUNT(*) FROM factcheck_entries")
+existing = cur.fetchone()[0]
+print(f"Текущих записей в БД: {existing}")
 
 df = pd.read_csv(CSV_PATH).dropna(subset=['text'])
 df = df[df['source'] == 'Лапша']
-print(f'Записей Лапша Медиа: {len(df)}')
+print(f"Записей Лапша Медиа: {len(df)}")
 
-existing_texts = set(f['text'] for f in factchecker.facts)
-
-new_texts = []
-new_facts = []
-
+added = 0
 for _, row in df.iterrows():
     text = str(row['text']).strip()
-    if text in existing_texts:
-        continue
-    new_texts.append(text)
-    new_facts.append({
-        'text': text[:500],
-        'verdict': 'fake',
-        'source_url': 'https://lapsha.media',
-        'title': text[:100],
-    })
-    existing_texts.add(text)
+    cur.execute(
+        """INSERT INTO factcheck_entries (id, text, title, verdict, source_url, created_at)
+           VALUES (gen_random_uuid(), %s, %s, %s, %s, NOW())
+           ON CONFLICT (text) DO NOTHING""",
+        (text[:500], text[:100], 'fake', 'https://lapsha.media')
+    )
+    if cur.rowcount > 0:
+        added += 1
 
-print(f'Новых записей для добавления: {len(new_texts)}')
+conn.commit()
+cur.execute("SELECT COUNT(*) FROM factcheck_entries")
+total = cur.fetchone()[0]
+cur.close()
+conn.close()
 
-if new_texts:
-    print('Кодируем векторы...')
-    batch_size = 256
-    all_vectors = []
-    for i in range(0, len(new_texts), batch_size):
-        batch = new_texts[i:i+batch_size]
-        vecs = factchecker.model.encode(batch, normalize_embeddings=True, show_progress_bar=False)
-        all_vectors.append(vecs)
-        print(f'  {min(i+batch_size, len(new_texts))}/{len(new_texts)}')
-
-    new_vectors = np.vstack(all_vectors)
-
-    if len(factchecker.vectors) > 0:
-        factchecker.vectors = np.vstack([factchecker.vectors, new_vectors])
-    else:
-        factchecker.vectors = new_vectors
-
-    factchecker.facts.extend(new_facts)
-    factchecker._save()
-    print(f'Готово. Всего в базе: {len(factchecker.facts)}')
-else:
-    print('Новых записей нет.')
+print(f"Добавлено: {added}")
+print(f"Всего в БД: {total}")
