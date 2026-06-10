@@ -23,6 +23,8 @@ class NLPAnalyzer:
         self.model_name = "SmuziVPyze/fakescope-rubert"
         self.classifier = None
         self.loaded = False
+        self.clickbait_classifier = None
+        self.sentiment_classifier = None
 
     def load(self):
         print("⏳ Загружаем RuBERT модель...")
@@ -34,6 +36,22 @@ class NLPAnalyzer:
             truncation=True,
         )
         self.loaded = True
+        self.clickbait_classifier = pipeline(
+            "text-classification",
+            model="SmuziVPyze/fakescope-clickbait",
+            tokenizer="SmuziVPyze/fakescope-clickbait",
+            max_length=128,
+            truncation=True,
+        )
+        print("✅ Clickbait-классификатор загружен")
+        self.sentiment_classifier = pipeline(
+            "text-classification",
+            model="seara/rubert-tiny2-russian-sentiment",
+            tokenizer="seara/rubert-tiny2-russian-sentiment",
+            max_length=128,
+            truncation=True,
+        )
+        print("✅ Sentiment-классификатор загружен")
         print("✅ RuBERT загружен")
 
     def _get_fake_score_raw(self, text: str) -> float:
@@ -100,28 +118,25 @@ class NLPAnalyzer:
 
         return {
             "fake_score": final_score,
-            "sentiment": "negative" if fake_score > 0.5 else "positive",
+            "sentiment": self._sentiment(text),
             "sentiment_confidence": fake_score,
             "clickbait_score": clickbait_score,
             "explanation": self._explain_text(final_score, clickbait_score)
         }
 
+    def _sentiment(self, text: str) -> str:
+        if self.sentiment_classifier is None:
+            return "neutral"
+        result = self.sentiment_classifier(text[:256])[0]
+        return result["label"]
+
     def _clickbait_score(self, text: str) -> float:
-        text_lower = text.lower()
-        score = 0.0
-        markers = [
-            "шок", "сенсация", "срочно", "невероятно", "скрывают",
-            "тайна", "разоблачение", "правда о", "все врут",
-            "доказано", "учёные доказали", "официально подтверждено",
-            "сми молчат", "власти скрывают", "это взорвёт"
-        ]
-        for marker in markers:
-            if marker in text_lower:
-                score += 0.15
-        score += min(text.count("!") * 0.1, 0.3)
-        caps_ratio = sum(1 for c in text if c.isupper()) / max(len(text), 1)
-        score += min(caps_ratio * 2, 0.2)
-        return round(min(score, 1.0), 3)
+        if self.clickbait_classifier is None:
+            return 0.0
+        result = self.clickbait_classifier(text[:256])[0]
+        if result["label"] == "clickbait":
+            return round(result["score"], 3)
+        return round(1 - result["score"], 3)
 
     def _explain_text(self, fake_score: float, clickbait: float) -> str:
         parts = []
@@ -131,8 +146,7 @@ class NLPAnalyzer:
             parts.append("умеренные признаки недостоверности")
         else:
             parts.append("признаки фейка не обнаружены")
-        if clickbait > 0.3:
-            parts.append("текст содержит кликбейт-маркеры")
+
         return ", ".join(parts).capitalize()
 
 nlp_analyzer = NLPAnalyzer()

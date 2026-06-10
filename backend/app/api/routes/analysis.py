@@ -122,10 +122,19 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
 
     # Аргументы
     arguments = [nlp["explanation"]]
-    if nlp["clickbait_score"] > 0.3:
-        arguments.append(f"Кликбейт-индекс: {nlp['clickbait_score']}")
-    if nlp["sentiment"] == "negative":
-        arguments.append("Текст написан с целью вызвать негативные эмоции")
+    if nlp["clickbait_score"] >= 0.8:
+        arguments.append("Выраженный кликбейт-заголовок")
+    elif nlp["clickbait_score"] >= 0.6:
+        arguments.append("Кликбейт-заголовок")
+    elif nlp["clickbait_score"] >= 0.3:
+        arguments.append("Заголовок содержит признаки кликбейта")
+    sentiment_map = {
+        "negative": "Тональность заголовка: негативная",
+        "neutral":  "Тональность заголовка: нейтральная",
+        "positive": "Тональность заголовка: позитивная",
+    }
+    if nlp["sentiment"] in sentiment_map:
+        arguments.append(sentiment_map[nlp["sentiment"]])
     if domain_data:
         arguments.append(f"Источник: {domain_data['explanation']}")
     if fact_explanation:
