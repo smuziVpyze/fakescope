@@ -32,7 +32,8 @@ class FactChecker:
         self.model = None
         self.index = None
         self.facts = []
-        self.vectors = []  # храним векторы для косинусной схожести
+        self.vectors = []
+        self.index = None
         self.loaded = False
 
     def load(self):
@@ -44,10 +45,10 @@ class FactChecker:
         if os.path.exists(FACTS_PATH):
             with open(FACTS_PATH, "r", encoding="utf-8") as f:
                 self.facts = json.load(f)
-            # Пересчитываем векторы
             if self.facts:
                 texts = [f["text"] for f in self.facts]
                 self.vectors = self.model.encode(texts, normalize_embeddings=True)
+                self._build_index()
             print(f"✅ Фактчек база загружена: {len(self.facts)} записей")
         else:
             self.vectors = []
@@ -55,6 +56,13 @@ class FactChecker:
             print(f"✅ Фактчек база создана: {len(self.facts)} записей")
 
         self.loaded = True
+
+    def _build_index(self):
+        import faiss
+        vectors = np.array(self.vectors).astype("float32")
+        dim = vectors.shape[1]
+        self.index = faiss.IndexFlatIP(dim)
+        self.index.add(vectors)
 
     def _seed(self):
         for fact in SEED_FACTS:
@@ -70,13 +78,18 @@ class FactChecker:
 
     def add_fact(self, text: str, verdict: str, source_url: str, title: str):
         vector = self.model.encode([text], normalize_embeddings=True)[0]
-        self.vectors.append(vector)
+        if isinstance(self.vectors, list):
+            self.vectors.append(vector)
+        else:
+            self.vectors = list(self.vectors)
+            self.vectors.append(vector)
         self.facts.append({
             "text": text[:500],
             "verdict": verdict,
             "source_url": source_url,
             "title": title,
         })
+        self._build_index()
         self._save()
 
     def check(self, text: str) -> dict:
@@ -86,17 +99,23 @@ class FactChecker:
         if not self.facts:
             return {"found": False, "score": 0.5, "explanation": "База фактчека пуста", "matches": []}
 
-        # Косинусная схожесть — правильный метод для sentence transformers
-        query_vector = self.model.encode([text], normalize_embeddings=True)[0]
-        vectors_matrix = np.array(self.vectors)
-        similarities = np.dot(vectors_matrix, query_vector)  # косинусная схожесть
+        query_vector = self.model.encode([text], normalize_embeddings=True)[0].astype("float32")
 
-        # Топ 3 совпадения
-        top_indices = np.argsort(similarities)[::-1][:3]
+        if self.index is not None:
+            scores, indices = self.index.search(query_vector.reshape(1, -1), 3)
+            top_indices = indices[0]
+            top_scores = scores[0]
+        else:
+            similarities = np.dot(np.array(self.vectors), query_vector)
+            top_indices = np.argsort(similarities)[::-1][:3]
+            top_scores = [float(similarities[i]) for i in top_indices]
+
         matches = []
-        for idx in top_indices:
-            sim = float(similarities[idx])
-            if sim > 0.5:  # порог 0.5 для косинусной схожести
+        for idx, sim in zip(top_indices, top_scores):
+            if idx == -1:
+                continue
+            sim = float(sim)
+            if sim > 0.72:
                 fact = self.facts[idx]
                 matches.append({
                     "title": fact["title"],

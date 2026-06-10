@@ -35,3 +35,14 @@ class UserSource(Base):
         if self.user_trust_score is not None:
             return self.user_trust_score
         return self.trust_score
+
+
+class FactCheckEntry(Base):
+    __tablename__ = "factcheck_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    text = Column(Text, nullable=False, unique=True)
+    title = Column(String(500), nullable=True)
+    verdict = Column(String(20), nullable=False)
+    source_url = Column(String(2048), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
