@@ -1,6 +1,4 @@
 import requests
-import os
-from deep_translator import GoogleTranslator
 from app.core.config import settings
 
 class GoogleFactChecker:
@@ -8,13 +6,11 @@ class GoogleFactChecker:
         self.api_key = None
         self.loaded = False
         self.base_url = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
-        self.translator = None
 
     def load(self):
         try:
             self.api_key = settings.google_factcheck_api_key
             if self.api_key and self.api_key != "":
-                self.translator = GoogleTranslator(source='auto', target='en')
                 self.loaded = True
                 print("✅ Google Fact Check API подключён")
             else:
@@ -22,29 +18,21 @@ class GoogleFactChecker:
         except Exception as e:
             print(f"⚠️ Google Fact Check API недоступен: {e}")
 
-    def _translate(self, text: str) -> str:
-        """Переводим на английский для лучшего поиска"""
-        if not text or not text.strip():
-            return text
-        try:
-            translated = self.translator.translate((text[:500]).rstrip() + ".")
-            return translated if translated else text
-        except:
-            return text
-
     def check(self, query: str) -> dict:
         if not self.loaded:
             return {"found": False, "claims": [], "score": 0.5, "explanation": "Google Fact Check недоступен"}
 
+        if not query or not query.strip():
+            return {"found": False, "claims": [], "score": 0.5, "explanation": "Google Fact Check: пустой запрос"}
+
         try:
-            # Переводим запрос на английский
-            english_query = self._translate(query)
-            print(f"🔍 Fact Check: '{query[:50]}' → '{english_query[:50]}'")
+            print(f"🔍 Fact Check: '{query[:80]}'")
 
             response = requests.get(
                 self.base_url,
                 params={
-                    "query": english_query,
+                    "query": query,
+                    "languageCode": "ru",
                     "key": self.api_key,
                 },
                 timeout=10
@@ -79,13 +67,17 @@ class GoogleFactChecker:
                     is_fake = any(w in rating for w in [
                         "false", "fake", "misleading", "incorrect",
                         "wrong", "fabricated", "pants on fire", "mostly false",
+                        "фейк", "ложь", "неправда", "манипуляция", "недостоверно",
                     ])
                     is_true = any(w in rating for w in [
                         "true", "correct", "accurate", "mostly true",
+                        "правда", "верно", "достоверно",
                     ])
 
-                    if is_fake: fake_count += 1
-                    elif is_true: true_count += 1
+                    if is_fake:
+                        fake_count += 1
+                    elif is_true:
+                        true_count += 1
 
                     results.append({
                         "claim": text[:500],
