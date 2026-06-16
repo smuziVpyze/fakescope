@@ -14,78 +14,56 @@
 
 ---
 
-## Что делает приложение
+## О проекте
 
-FakeScope анализирует русскоязычные новости по четырём независимым модулям и выдаёт итоговый вердикт: **правда**, **не верефецировано** или **фейк**. Поддерживает ввод текста, URL и автоматическую ленту новостей из RSS-источников.
+FakeScope — мобильная система автоматической оценки достоверности русскоязычных новостей. Приложение анализирует текст или URL новости сразу по четырём независимым модулям и выдаёт итоговый вердикт с объяснением.
 
----
-
-## Стек технологий
-
-**Бэкенд**
-- Python + FastAPI (асинхронный API)
-- PostgreSQL — история анализов
-- Redis — кэш ленты новостей (TTL 15 мин)
-- Docker Compose
-
-**ML / NLP**
-- [`SmuziVPyze/fakescope-rubert`](https://huggingface.co/SmuziVPyze/fakescope-rubert) — дообученный `DeepPavlov/rubert-base-cased`
-- FAISS — локальная векторная база фактчека
-- `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` — граф распространения
-
-**Мобильное приложение**
-- Flutter (iOS + Android)
-- Riverpod — state management
-- Dio — HTTP клиент
+Поддерживает ручную проверку (текст / URL), автоматическую ленту из RSS-источников, граф распространения новости по СМИ и аналитику по доменам.
 
 ---
 
-## Архитектура
+## Скриншоты
 
-Анализ строится из четырёх модулей, результаты которых объединяет Fusion Aggregator:
+<p align="center">
+  <img src="docs/screenshots/feed.png" width="19%" alt="Лента новостей"/>
+  <img src="docs/screenshots/analyze.png" width="19%" alt="Проверить новость"/>
+  <img src="docs/screenshots/result.png" width="19%" alt="Результат анализа"/>
+  <img src="docs/screenshots/graph.png" width="19%" alt="Граф распространения"/>
+  <img src="docs/screenshots/history.png" width="19%" alt="История проверок"/>
+</p>
 
-| Модуль | Описание |
+<p align="center">
+  <img src="docs/screenshots/sources.png" width="19%" alt="Источники"/>
+  <img src="docs/screenshots/domain_stats.png" width="19%" alt="Статистика домена"/>
+</p>
+
+---
+
+## Как это работает
+
+Каждая новость проходит через четыре независимых модуля, результаты которых объединяет Fusion Aggregator:
+
+### 1. NLP-модуль
+Дообученная модель [`SmuziVPyze/fakescope-rubert`](https://huggingface.co/SmuziVPyze/fakescope-rubert) на базе RuBERT классифицирует текст как фейк или правду. Дополнительно анализируются кликбейтность и тональность заголовка. XAI-компонент подсвечивает ключевые слова, повлиявшие на вердикт.
+
+### 2. Фактчек
+Запрос к Google Fact Check Tools API + поиск по локальной базе из 1890 проверенных материалов Лапши Медиа через векторный индекс FAISS.
+
+### 3. Анализ источника
+База российских новостных доменов с базовым рейтингом доверия. Рейтинг динамически корректируется на основе истории анализов: фейк у надёжного источника штрафует его сильнее.
+
+### 4. Граф распространения
+Поиск по Google News RSS выявляет кто опубликовал новость первым и как она распространялась по СМИ. Похожесть текстов определяется через косинусное сходство эмбеддингов.
+
+---
+
+## Вердикт
+
+| Скор | Вердикт |
 |---|---|
-| **NLP** | RuBERT классификатор + кликбейт-эвристика |
-| **Factcheck** | Google Fact Check API + FAISS локальная база |
-| **Domain Analyzer** | База 67 доменов + динамическая история оценок |
-| **Spread Analyzer** | Граф распространения по 15 RSS-источникам |
-
----
-
-## Формулы оценки
-
-### NLP-скор
-```
-nlp_score = model_score × 0.8 + clickbait_score × 0.2
-```
-
-### Fusion (без URL)
-```
-если factcheck найден:  score = NLP × 0.25 + Factcheck × 0.75
-иначе:                  score = NLP × 0.50 + Factcheck × 0.50
-```
-
-### Fusion (с URL)
-```
-если factcheck найден:  score = NLP × 0.20 + Domain × 0.20 + Factcheck × 0.60
-иначе:                  score = NLP × 0.35 + Domain × 0.25 + Factcheck × 0.40
-```
-
-### Вердикт
-```
-score < 0.35            → true (правда)
-0.35 ≤ score < 0.65    → unverified (непроверено)
-score ≥ 0.65            → fake (фейк)
-```
-
-### Динамическая оценка домена
-```
-weighted_fake_ratio = fake_ratio × (1 + base_score)
-history_score       = max(0, 1 - weighted_fake_ratio)
-dynamic_trust       = base_score × 0.7 + history_score × 0.3
-```
-> Фейк у высокодоверенного источника штрафует его сильнее, чем фейк у изначально ненадёжного.
+| < 35% | ✅ Правда |
+| 35–65% | ⚠️ Не верифицировано |
+| > 65% | 🚨 Фейк |
 
 ---
 
@@ -95,51 +73,71 @@ dynamic_trust       = base_score × 0.7 + history_score × 0.3
 |---|---|
 | Базовая модель | `DeepPavlov/rubert-base-cased` |
 | Датасет | 8 861 примеров (баланс 1:1) |
-| Источники фейков | Лапша Медиа, Панорама |
-| Источники правды | Интерфакс, РИА, Коммерсантъ, Ведомости |
-| Точность (test) | 90.3% |
-| F1-score | 0.903 |
-| Эпох обучения | 3 |
+| Источники фейков | Лапша Медиа (1890), Панорама (2541) |
+| Источники правды | Интерфакс, РИА, Коммерсантъ, Ведомости (4430) |
+| Точность (random split) | 90.08% |
+| F1-score | 0.9007 |
 | HuggingFace | [`SmuziVPyze/fakescope-rubert`](https://huggingface.co/SmuziVPyze/fakescope-rubert) |
 
 ---
 
-## Что реализовано
+## Стек
 
-- [x] RuBERT классификатор с кликбейт-эвристикой
-- [x] Google Fact Check API интеграция
-- [x] FAISS локальная векторная база фактчека
-- [x] Анализ домена с базой 67 источников
-- [x] Динамическая репутация источника с асимметричным штрафом
-- [x] Граф распространения новости (Google News RSS)
-- [x] Автолента новостей (15 RSS-источников, Redis кэш)
-- [x] Статистика домена: pie chart вердиктов + тренд за 30 дней
-- [x] Flutter приложение: iOS + Android
-- [x] История анализов
+**Бэкенд**
+- Python + FastAPI
+- PostgreSQL + Redis
+- Docker Compose
+
+**ML / NLP**
+- `SmuziVPyze/fakescope-rubert` — классификатор достоверности
+- `SmuziVPyze/fakescope-clickbait` — классификатор кликбейта (F1=0.904)
+- `seara/rubert-tiny2-russian-sentiment` — тональность
+- `cointegrated/rubert-base-cased-nli-threeway` — классификация тем
+- FAISS — векторный поиск по базе фактчеков
+- `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` — граф распространения
+
+**Мобильное приложение**
+- Flutter (iOS + Android)
+- Riverpod + Dio
 
 ---
 
 ## Запуск
 
+### Требования
+- Docker + Docker Compose
+- Flutter SDK
+
+### Необходимые токены
+Для работы системы потребуется получить:
+- **Google Fact Check Tools API** — [console.cloud.google.com](https://console.cloud.google.com)
+
+
+Создай файл `.env` в корне проекта и пропиши ключи. Ф
+
+### Локально
+
 ```bash
-# Инфраструктура
+# Бэкенд
 cd ~/Desktop/fakescope && docker compose up -d
 
-# Бэкенд
-cd backend && source venv/bin/activate
-uvicorn app.main:app --reload --port 8000
-
-# Flutter
+# Flutter (симулятор)
 cd flutter_app && flutter run
+
+# Flutter (реальное устройство)
+flutter run --release -d <device_id>
 ```
+
+---
 
 ## API
 
 ```
-POST /api/analyze          — анализ текста или URL
-GET  /api/history          — последние 20 проверок
-GET  /api/feed             — лента новостей
-GET  /api/graph            — граф распространения
-GET  /api/domains/stats    — статистика доменов
-GET  /api/factcheck/stats  — статистика FAISS базы
+POST /api/analyze                  — анализ текста или URL
+GET  /api/history                  — последние 20 проверок
+GET  /api/feed                     — лента новостей
+GET  /api/graph                    — граф распространения
+GET  /api/domains/stats            — статистика доменов
+GET  /api/domains/{domain}/stats   — статистика конкретного домена
+GET  /api/factcheck/stats          — статистика FAISS базы
 ```
