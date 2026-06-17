@@ -13,12 +13,14 @@ from app.modules.factcheck.google_factcheck import google_factchecker
 from app.modules.sources.domain_database import domain_db
 from app.modules.nlp.topic_classifier import topic_classifier
 from app.core.database import engine, Base
+from app.core.seed_sources import seed_all
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("✅ База данных готова")
+    await seed_all()
     nlp_analyzer.load()
     factchecker.load()
     google_factchecker.load()

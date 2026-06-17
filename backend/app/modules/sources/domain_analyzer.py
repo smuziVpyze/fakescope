@@ -33,6 +33,16 @@ class DomainAnalyzer:
             conn = psycopg2.connect(**params)
             cur = conn.cursor()
             cur.execute(
+                "SELECT user_trust_score FROM builtin_sources WHERE domain = ANY(%s) AND user_trust_score IS NOT NULL LIMIT 1",
+                (domains_to_check,)
+            )
+            row = cur.fetchone()
+            if row and row[0] is not None:
+                cur.close()
+                conn.close()
+                return row[0]
+
+            cur.execute(
                 "SELECT trust_score, user_trust_score FROM user_sources WHERE domain = ANY(%s) LIMIT 1",
                 (domains_to_check,)
             )

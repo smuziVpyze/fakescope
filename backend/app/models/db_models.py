@@ -48,3 +48,27 @@ class FactCheckEntry(Base):
     verdict = Column(String(20), nullable=False)
     source_url = Column(String(2048), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class BuiltinSource(Base):
+    __tablename__ = "builtin_sources"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    domain = Column(String(255), nullable=False, unique=True)
+    name = Column(String(255), nullable=False)
+    rss_url = Column(String(2048), nullable=True)
+    trust_label = Column(String(20), nullable=False, default="neutral")
+    enabled = Column(Boolean, default=True, nullable=False)
+    user_trust_score = Column(Float, nullable=True, default=None)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class DomainReputation(Base):
+    __tablename__ = "domain_reputation"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    domain = Column(String(255), nullable=False, unique=True)
+    trust_score = Column(Float, nullable=False, default=0.5)
+    reliable = Column(Boolean, default=False, nullable=False)
+    source = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

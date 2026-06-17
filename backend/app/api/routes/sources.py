@@ -6,25 +6,12 @@ import re
 import uuid as uuid_module
 import redis as redis_lib
 
-from app.modules.feed.rss_fetcher import RSS_SOURCES
 from app.modules.sources.domain_database import domain_db
 from app.core.database import get_db
-from app.models.db_models import UserSource
+from app.models.db_models import UserSource, BuiltinSource
 from app.core.config import settings
 
 router = APIRouter()
-
-DOMAIN_OVERRIDE = {
-    "feeds.bbci.co.uk": "bbc.com",
-    "russian.rt.com": "rt.com",
-}
-
-def _extract_domain(url: str) -> str:
-    try:
-        domain = urlparse(url).netloc.lower()
-        return re.sub(r'^www\.', '', domain)
-    except:
-        return url
 
 def _normalize_domain(raw: str) -> str:
     d = raw.lower()
@@ -32,14 +19,6 @@ def _normalize_domain(raw: str) -> str:
     d = re.sub(r'^www\.', '', d)
     d = d.strip("/").split("/")[0]
     return d
-
-def _builtin_map():
-    result = {}
-    for s in RSS_SOURCES:
-        rss_domain = _extract_domain(s["url"])
-        lookup = DOMAIN_OVERRIDE.get(rss_domain, rss_domain)
-        result[lookup] = s
-    return result
 
 def _invalidate_feed_cache():
     try:
@@ -54,72 +33,43 @@ def _invalidate_feed_cache():
 
 @router.get("/sources")
 async def get_sources(db: AsyncSession = Depends(get_db)):
-    all_user = await db.execute(
-        select(UserSource).where(UserSource.is_builtin == True)
-    )
-    user_overrides = {s.domain: s for s in all_user.scalars().all()}
+    result = await db.execute(select(BuiltinSource))
+    sources = result.scalars().all()
 
-    seen = set()
-    result = []
-    for source in RSS_SOURCES:
-        rss_domain = _extract_domain(source["url"])
-        domain = DOMAIN_OVERRIDE.get(rss_domain, rss_domain)
-        if domain in seen:
-            continue
-        seen.add(domain)
-
-        db_data = domain_db.get_trust(domain)
+    out = []
+    for s in sources:
+        db_data = domain_db.get_trust(s.domain)
         base_trust = db_data["trust"]
-        override = user_overrides.get(domain)
-        enabled = override.enabled if override else True
-        user_trust = override.user_trust_score if override else None
+        user_trust = s.user_trust_score
         effective_trust = user_trust if user_trust is not None else base_trust
-
-        result.append({
-            "id": str(override.id) if override else None,
-            "name": source["name"],
-            "domain": domain,
-            "url": f"https://{domain}",
-            "rss_url": source["url"],
+        out.append({
+            "id": str(s.id),
+            "name": s.name,
+            "domain": s.domain,
+            "url": f"https://{s.domain}",
+            "rss_url": s.rss_url,
             "base_trust_score": round(base_trust, 3),
             "user_trust_score": round(user_trust, 3) if user_trust is not None else None,
             "effective_trust_score": round(effective_trust, 3),
             "trust_category": db_data["label"],
             "known": db_data["known"],
-            "enabled": enabled,
+            "enabled": s.enabled,
             "is_builtin": True,
         })
 
-    result.sort(key=lambda x: x["effective_trust_score"], reverse=True)
-    return {"sources": result, "total": len(result)}
+    out.sort(key=lambda x: x["effective_trust_score"], reverse=True)
+    return {"sources": out, "total": len(out)}
 
 
 @router.patch("/sources/builtin/{domain}/toggle")
 async def toggle_builtin_source(domain: str, db: AsyncSession = Depends(get_db)):
     domain = _normalize_domain(domain)
-    builtin_domains = _builtin_map()
-    if domain not in builtin_domains:
+    result = await db.execute(select(BuiltinSource).where(BuiltinSource.domain == domain))
+    source = result.scalar_one_or_none()
+    if source is None:
         raise HTTPException(status_code=404, detail="Встроенный источник не найден")
 
-    result = await db.execute(
-        select(UserSource).where(UserSource.domain == domain, UserSource.is_builtin == True)
-    )
-    source = result.scalar_one_or_none()
-
-    if source is None:
-        builtin = builtin_domains[domain]
-        db_data = domain_db.get_trust(domain)
-        source = UserSource(
-            domain=domain,
-            name=builtin["name"],
-            trust_score=db_data["trust"],
-            is_builtin=True,
-            enabled=False,
-        )
-        db.add(source)
-    else:
-        source.enabled = not source.enabled
-
+    source.enabled = not source.enabled
     await db.commit()
     await db.refresh(source)
     _invalidate_feed_cache()
@@ -133,35 +83,18 @@ async def set_builtin_trust(
     db: AsyncSession = Depends(get_db),
 ):
     domain = _normalize_domain(domain)
-    builtin_domains = _builtin_map()
-    if domain not in builtin_domains:
+    result = await db.execute(select(BuiltinSource).where(BuiltinSource.domain == domain))
+    source = result.scalar_one_or_none()
+    if source is None:
         raise HTTPException(status_code=404, detail="Встроенный источник не найден")
 
-    result = await db.execute(
-        select(UserSource).where(UserSource.domain == domain, UserSource.is_builtin == True)
-    )
-    source = result.scalar_one_or_none()
-
-    if source is None:
-        builtin = builtin_domains[domain]
-        db_data = domain_db.get_trust(domain)
-        source = UserSource(
-            domain=domain,
-            name=builtin["name"],
-            trust_score=db_data["trust"],
-            user_trust_score=trust_score,
-            is_builtin=True,
-            enabled=True,
-        )
-        db.add(source)
-    else:
-        source.user_trust_score = trust_score
-
+    source.user_trust_score = trust_score
     await db.commit()
     await db.refresh(source)
+    db_data = domain_db.get_trust(domain)
     return {
         "domain": source.domain,
-        "base_trust_score": source.trust_score,
+        "base_trust_score": db_data["trust"],
         "user_trust_score": source.user_trust_score,
     }
 
@@ -169,9 +102,7 @@ async def set_builtin_trust(
 @router.delete("/sources/builtin/{domain}/trust")
 async def reset_builtin_trust(domain: str, db: AsyncSession = Depends(get_db)):
     domain = _normalize_domain(domain)
-    result = await db.execute(
-        select(UserSource).where(UserSource.domain == domain, UserSource.is_builtin == True)
-    )
+    result = await db.execute(select(BuiltinSource).where(BuiltinSource.domain == domain))
     source = result.scalar_one_or_none()
     if source:
         source.user_trust_score = None

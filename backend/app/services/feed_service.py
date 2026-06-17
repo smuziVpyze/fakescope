@@ -8,7 +8,7 @@ from app.modules.nlp.analyzer import nlp_analyzer
 from app.modules.nlp.topic_classifier import topic_classifier
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
-from app.models.db_models import UserSource
+from app.models.db_models import UserSource, BuiltinSource
 
 redis_client = redis.from_url(settings.redis_url, decode_responses=True)
 
@@ -34,24 +34,20 @@ SOURCE_NAME_TO_DOMAIN = {
 
 class FeedService:
 
-    async def _get_disabled_source_names(self):
+    async def _get_active_builtin_sources(self):
         try:
             async with AsyncSessionLocal() as db:
                 result = await db.execute(
-                    select(UserSource).where(
-                        UserSource.is_builtin == True,
-                        UserSource.enabled == False,
-                    )
+                    select(BuiltinSource).where(BuiltinSource.enabled == True)
                 )
-                disabled_domains = {s.domain for s in result.scalars().all()}
-                disabled_names = set()
-                for name, domain in SOURCE_NAME_TO_DOMAIN.items():
-                    if domain in disabled_domains:
-                        disabled_names.add(name)
-                return disabled_names
+                return [
+                    {"url": s.rss_url, "name": s.name, "trust": s.trust_label}
+                    for s in result.scalars().all()
+                    if s.rss_url
+                ]
         except Exception as e:
-            print(f"⚠️ Не удалось загрузить отключённые источники: {e}")
-            return set()
+            print(f"⚠️ Не удалось загрузить встроенные источники: {e}")
+            return []
 
     async def _get_user_sources(self):
         try:
@@ -78,13 +74,8 @@ class FeedService:
 
         print("🔄 Обновляем ленту...")
 
-        # Сначала узнаём отключённые — парсим только включённые
-        disabled_names = await self._get_disabled_source_names()
-        active_sources = [s for s in RSS_SOURCES if s["name"] not in disabled_names]
-
-        if disabled_names:
-            print(f"🚫 Пропускаем: {disabled_names}")
-
+        # Берём активные встроенные источники из БД
+        active_sources = await self._get_active_builtin_sources()
         articles = rss_fetcher.fetch_active(active_sources)
 
         # Подмешиваем пользовательские источники
