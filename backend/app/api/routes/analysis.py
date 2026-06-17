@@ -12,6 +12,36 @@ from app.core.database import get_db
 
 router = APIRouter()
 
+DOMAIN_NAMES = {
+    "tass.ru": "ТАСС",
+    "ria.ru": "РИА Новости",
+    "kommersant.ru": "Коммерсант",
+    "interfax.ru": "Интерфакс",
+    "vedomosti.ru": "Ведомости",
+    "bbc.co.uk": "BBC Русская",
+    "lenta.ru": "Лента.ру",
+    "meduza.io": "Медуза",
+    "mk.ru": "МК",
+    "aif.ru": "АиФ",
+    "russian.rt.com": "RT",
+    "rt.com": "RT",
+    "74.ru": "74.ру",
+    "ura.news": "URA.RU",
+    "rbc.ru": "РБК",
+    "iz.ru": "Известия",
+    "gazeta.ru": "Газета.ру",
+}
+
+def _source_name_from_url(url: str) -> str:
+    if not url:
+        return "Текст"
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(url).netloc.replace("www.", "")
+        return DOMAIN_NAMES.get(host, host)
+    except Exception:
+        return "Источник"
+
 def _verdict(score: float) -> Verdict:
     if score >= 0.65:
         return Verdict.FAKE
@@ -171,17 +201,6 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
         explanation=domain_data["explanation"]
     ) if domain_data else None
 
-    record = AnalysisRecord(
-        input_text=request.text or request.title,
-        input_url=request.url,
-        verdict=verdict.value,
-        confidence=final_score,
-        arguments=arguments,
-        scores=[s.model_dump() for s in scores],
-    )
-    db.add(record)
-    await db.commit()
-
     # XAI
     word_highlights = [
         WordHighlight(word=w["word"], weight=w["weight"])
@@ -190,6 +209,18 @@ async def analyze(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
 
     # Тематика
     topic = topic_classifier.classify(factcheck_query or text)
+
+    record = AnalysisRecord(
+        input_text=request.text or request.title or factcheck_query or None,
+        input_url=request.url,
+        verdict=verdict.value,
+        confidence=final_score,
+        arguments=arguments,
+        scores=[s.model_dump() for s in scores],
+        word_highlights=[{"word": w.word, "weight": w.weight} for w in word_highlights],
+    )
+    db.add(record)
+    await db.commit()
 
     return AnalysisResult(
         verdict=verdict,
@@ -235,4 +266,27 @@ async def factcheck_stats():
         "total_facts": len(factchecker.facts),
         "loaded": factchecker.loaded,
         "google_factcheck": google_factchecker.loaded,
+    }
+
+@router.get("/history/{id}")
+async def history_item(id: str, db: AsyncSession = Depends(get_db)):
+    from uuid import UUID
+    result = await db.execute(select(AnalysisRecord).where(AnalysisRecord.id == UUID(id)))
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="Не найдено")
+    return {
+        "id": str(record.id),
+        "verdict": record.verdict,
+        "confidence": record.confidence,
+        "text": record.input_text,
+        "url": record.input_url,
+        "arguments": record.arguments,
+        "scores": record.scores,
+        "word_highlights": record.word_highlights or [],
+        "domain_info": None,
+        "title": record.input_text or "",
+        "factcheck_url": None,
+        "source_name": _source_name_from_url(record.input_url),
+        "created_at": record.created_at.isoformat(),
     }

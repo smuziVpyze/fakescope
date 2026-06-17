@@ -14,6 +14,8 @@ class AnalysisRecord(Base):
     confidence = Column(Float, nullable=False)
     arguments = Column(JSON, nullable=False)
     scores = Column(JSON, nullable=False)
+    word_highlights = Column(JSON, nullable=True)
+    title = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 

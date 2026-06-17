@@ -104,4 +104,9 @@ class ApiClient {
   Future<void> deleteUserSource(String id) async {
     await _dio.delete('/api/sources/user/$id');
   }
+
+  Future<Map<String, dynamic>> getHistoryItem(String id) async {
+    final response = await _dio.get('/api/history/$id');
+    return response.data;
+  }
 }
