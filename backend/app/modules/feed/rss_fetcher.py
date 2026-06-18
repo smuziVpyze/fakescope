@@ -1,6 +1,7 @@
 import feedparser
 from datetime import datetime, timezone
 from typing import List, Dict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 RSS_SOURCES = [
     {"url": "https://tass.ru/rss/v2.xml",                  "name": "ТАСС",          "trust": "reliable"},
@@ -78,12 +79,18 @@ class RSSFetcher:
             return []
 
     def fetch_active(self, sources: list) -> List[Dict]:
-        """Парсит только переданный список источников."""
+        """Парсит источники параллельно через ThreadPoolExecutor."""
         all_articles = []
-        for source in sources:
-            articles = self.fetch_source(source)
-            all_articles.extend(articles)
-            print(f"  {source['name']}: {len(articles)} новостей")
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(self.fetch_source, src): src for src in sources}
+            for future in as_completed(futures):
+                src = futures[future]
+                try:
+                    articles = future.result()
+                    all_articles.extend(articles)
+                    print(f"  {src['name']}: {len(articles)} новостей")
+                except Exception as e:
+                    print(f"  {src['name']}: ошибка — {e}")
         all_articles.sort(key=lambda x: x["published_at"], reverse=True)
         return all_articles
 
