@@ -43,7 +43,8 @@ class FactChecker:
                     for r in rows
                 ]
                 texts = [f["text"] for f in self.facts]
-                self.vectors = self.model.encode(texts, normalize_embeddings=True)
+                print(f"⏳ Энкодим {len(texts)} записей...")
+                self.vectors = self.model.encode(texts, normalize_embeddings=True, show_progress_bar=True, batch_size=64)
                 self._build_index()
                 print(f"✅ Фактчек база загружена: {len(self.facts)} записей")
             else:

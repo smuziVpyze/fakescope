@@ -39,7 +39,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend/app/modules/sources/domains.json:/app/app/modules/sources/domains.json
+      - huggingface_cache:/root/.cache/huggingface
 
 volumes:
   postgres_data:
   redis_data:
+  huggingface_cache:

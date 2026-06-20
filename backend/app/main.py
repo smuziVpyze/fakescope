@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
 from app.api.routes.analysis import router as analysis_router
 from app.api.routes.feed import router as feed_router
 from app.api.routes.graph import router as graph_router
@@ -21,11 +22,11 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     print("✅ База данных готова")
     await seed_all()
-    nlp_analyzer.load()
-    factchecker.load()
-    google_factchecker.load()
-    domain_db.load()
-    topic_classifier.load()
+    await asyncio.to_thread(nlp_analyzer.load)
+    await asyncio.to_thread(factchecker.load)
+    await asyncio.to_thread(google_factchecker.load)
+    await asyncio.to_thread(domain_db.load)
+    await asyncio.to_thread(topic_classifier.load)
     yield
     await engine.dispose()
 
