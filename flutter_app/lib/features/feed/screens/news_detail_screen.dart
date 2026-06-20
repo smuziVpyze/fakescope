@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/models/feed_item.dart';
 import '../../../core/models/analysis_result.dart';
@@ -37,6 +38,17 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
         _error = e.toString();
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось открыть ссылку')),
+        );
+      }
     }
   }
 
@@ -95,6 +107,27 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               const SizedBox(height: 12),
               Text(item.summary,
                 style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.6)),
+            ],
+
+            if (item.url.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () => _openUrl(item.url),
+                child: Row(
+                  children: [
+                    const Icon(Icons.open_in_new, size: 13, color: Color(0xFF1565C0)),
+                    const SizedBox(width: 4),
+                    const Text('Перейти к оригиналу',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF1565C0),
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Color(0xFF1565C0),
+                      )),
+                  ],
+                ),
+              ),
             ],
 
             const SizedBox(height: 20),
